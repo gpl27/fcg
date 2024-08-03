@@ -42,6 +42,11 @@
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
+// struct Entity {
+//     glm::mat4 model;
+//     ObjModel* object_model;
+// };
+
 struct ObjModel
 {
     tinyobj::attrib_t                 attrib;
@@ -108,7 +113,7 @@ void PopMatrix(glm::mat4& M);
 void BuildTrianglesAndAddToVirtualScene(ObjModel*); // Constrói representação de um ObjModel como malha de triângulos para renderização
 void ComputeNormals(ObjModel* model); // Computa normais de um ObjModel, caso não existam.
 void LoadShadersFromFiles(); // Carrega os shaders de vértice e fragmento, criando um programa de GPU
-void LoadTextureImage(const char* filename); // Função que carrega imagens de textura
+GLuint LoadTextureImage(const char* filename); // Função que carrega imagens de textura
 void DrawVirtualObject(const char* object_name); // Desenha um objeto armazenado em g_VirtualScene
 GLuint LoadShader_Vertex(const char* filename);   // Carrega um vertex shader
 GLuint LoadShader_Fragment(const char* filename); // Carrega um fragment shader
@@ -155,6 +160,7 @@ struct SceneObject
     GLuint       vertex_array_object_id; // ID do VAO onde estão armazenados os atributos do modelo
     glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
     glm::vec3    bbox_max;
+    GLuint       texture_id;
 };
 
 // Abaixo definimos variáveis globais utilizadas em várias funções do código.
@@ -205,6 +211,7 @@ GLint g_projection_uniform;
 GLint g_object_id_uniform;
 GLint g_bbox_min_uniform;
 GLint g_bbox_max_uniform;
+GLint g_texture_uniform;
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
@@ -283,14 +290,14 @@ int main(int argc, char* argv[])
     LoadShadersFromFiles();
 
     // Carregamos duas imagens para serem utilizadas como textura
-    LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
-    LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
-    LoadTextureImage("../../data/mario/Mario_Albedo.png"); // TextureImage2
+    // LoadTextureImage("../../data/tc-earth_daymap_surface.jpg");      // TextureImage0
+    // LoadTextureImage("../../data/tc-earth_nightmap_citylights.gif"); // TextureImage1
+    // LoadTextureImage("../../data/mario/Mario_Albedo.png"); // TextureImage2
 
     // Construímos a representação de objetos geométricos através de malhas de triângulos
-    ObjModel spheremodel("../../data/mario/Mario.obj");
-    ComputeNormals(&spheremodel);
-    BuildTrianglesAndAddToVirtualScene(&spheremodel);
+    ObjModel mariomodel("../../data/mario/Mario.obj");
+    ComputeNormals(&mariomodel);
+    BuildTrianglesAndAddToVirtualScene(&mariomodel);
 
     if ( argc > 1 )
     {
@@ -430,7 +437,7 @@ int main(int argc, char* argv[])
 }
 
 // Função que carrega uma imagem para ser utilizada como textura
-void LoadTextureImage(const char* filename)
+GLuint LoadTextureImage(const char* filename)
 {
     printf("Carregando imagem \"%s\"... ", filename);
 
@@ -479,6 +486,7 @@ void LoadTextureImage(const char* filename)
     stbi_image_free(data);
 
     g_NumLoadedTextures += 1;
+    return g_NumLoadedTextures - 1;
 }
 
 // Função que desenha um objeto armazenado em g_VirtualScene. Veja definição
@@ -496,6 +504,7 @@ void DrawVirtualObject(const char* object_name)
     glm::vec3 bbox_max = g_VirtualScene[object_name].bbox_max;
     glUniform4f(g_bbox_min_uniform, bbox_min.x, bbox_min.y, bbox_min.z, 1.0f);
     glUniform4f(g_bbox_max_uniform, bbox_max.x, bbox_max.y, bbox_max.z, 1.0f);
+    glUniform1i(g_texture_uniform, g_VirtualScene[object_name].texture_id);
 
     // Pedimos para a GPU rasterizar os vértices dos eixos XYZ
     // apontados pelo VAO como linhas. Veja a definição de
@@ -556,13 +565,14 @@ void LoadShadersFromFiles()
     g_object_id_uniform  = glGetUniformLocation(g_GpuProgramID, "object_id"); // Variável "object_id" em shader_fragment.glsl
     g_bbox_min_uniform   = glGetUniformLocation(g_GpuProgramID, "bbox_min");
     g_bbox_max_uniform   = glGetUniformLocation(g_GpuProgramID, "bbox_max");
+    g_texture_uniform    = glGetUniformLocation(g_GpuProgramID, "TextureImage");
 
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
-    glUseProgram(g_GpuProgramID);
-    glUniform1i(glGetUniformLocation(g_GpuProgramID, "TextureImage0"), 0);
-    glUniform1i(glGetUniformLocation(g_GpuProgramID, "TextureImage1"), 1);
-    glUniform1i(glGetUniformLocation(g_GpuProgramID, "TextureImage2"), 2);
-    glUseProgram(0);
+    // glUseProgram(g_GpuProgramID);
+    // glUniform1i(glGetUniformLocation(g_GpuProgramID, "TextureImage0"), 0);
+    // glUniform1i(glGetUniformLocation(g_GpuProgramID, "TextureImage1"), 1);
+    // glUniform1i(glGetUniformLocation(g_GpuProgramID, "TextureImage2"), 2);
+    // glUseProgram(0);
 }
 
 // Função que pega a matriz M e guarda a mesma no topo da pilha
@@ -734,6 +744,8 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
 
         theobject.bbox_min = bbox_min;
         theobject.bbox_max = bbox_max;
+
+        theobject.texture_id = LoadTextureImage("../../data/mario/Mario_Albedo.png"); // Pegar do .mtl
 
         g_VirtualScene[model->shapes[shape].name] = theobject;
     }

@@ -1,3 +1,0 @@
-C:/Users/mateu/OneDrive/Documentos/fcg/build/CMakeFiles/main.dir
-C:/Users/mateu/OneDrive/Documentos/fcg/build/CMakeFiles/edit_cache.dir
-C:/Users/mateu/OneDrive/Documentos/fcg/build/CMakeFiles/rebuild_cache.dir

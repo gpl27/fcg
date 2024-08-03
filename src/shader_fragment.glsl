@@ -29,9 +29,7 @@ uniform vec4 bbox_min;
 uniform vec4 bbox_max;
 
 // Variáveis para acesso das imagens de textura
-uniform sampler2D TextureImage0;
-uniform sampler2D TextureImage1;
-uniform sampler2D TextureImage2;
+uniform sampler2D TextureImage;
 
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec4 color;
@@ -59,7 +57,7 @@ void main()
     vec4 n = normalize(normal);
 
     // Vetor que define o sentido da fonte de luz em relação ao ponto atual.
-    vec4 l = normalize(vec4(1.0,1.0,0.0,0.0));
+    vec4 l = normalize(vec4(0.0,1.0,0.0,0.0));
 
     // Vetor que define o sentido da câmera em relação ao ponto atual.
     vec4 v = normalize(camera_position - p);
@@ -68,62 +66,64 @@ void main()
     float U = 0.0;
     float V = 0.0;
 
-    if ( object_id == SPHERE )
-    {
-        // PREENCHA AQUI as coordenadas de textura da esfera, computadas com
-        // projeção esférica EM COORDENADAS DO MODELO. Utilize como referência
-        // o slides 134-150 do documento Aula_20_Mapeamento_de_Texturas.pdf.
-        // A esfera que define a projeção deve estar centrada na posição
-        // "bbox_center" definida abaixo.
+    // if ( object_id == SPHERE )
+    // {
+    //     // PREENCHA AQUI as coordenadas de textura da esfera, computadas com
+    //     // projeção esférica EM COORDENADAS DO MODELO. Utilize como referência
+    //     // o slides 134-150 do documento Aula_20_Mapeamento_de_Texturas.pdf.
+    //     // A esfera que define a projeção deve estar centrada na posição
+    //     // "bbox_center" definida abaixo.
 
-        // Você deve utilizar:
-        //   função 'length( )' : comprimento Euclidiano de um vetor
-        //   função 'atan( , )' : arcotangente. Veja https://en.wikipedia.org/wiki/Atan2.
-        //   função 'asin( )'   : seno inverso.
-        //   constante M_PI
-        //   variável position_model
+    //     // Você deve utilizar:
+    //     //   função 'length( )' : comprimento Euclidiano de um vetor
+    //     //   função 'atan( , )' : arcotangente. Veja https://en.wikipedia.org/wiki/Atan2.
+    //     //   função 'asin( )'   : seno inverso.
+    //     //   constante M_PI
+    //     //   variável position_model
 
-        vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
+    //     vec4 bbox_center = (bbox_min + bbox_max) / 2.0;
 
-        // vec4 pl = vec4(origin + normalize(position_model - origin))
-        float theta = atan(position_model.x, position_model.z);
-        float phi = asin(position_model.y);
+    //     // vec4 pl = vec4(origin + normalize(position_model - origin))
+    //     float theta = atan(position_model.x, position_model.z);
+    //     float phi = asin(position_model.y);
 
-        U = texcoords.x;
-        V = texcoords.y;
-    }
-    else if ( object_id == BUNNY )
-    {
-        // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
-        // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
-        // o slides 99-104 do documento Aula_20_Mapeamento_de_Texturas.pdf,
-        // e também use as variáveis min*/max* definidas abaixo para normalizar
-        // as coordenadas de textura U e V dentro do intervalo [0,1]. Para
-        // tanto, veja por exemplo o mapeamento da variável 'p_v' utilizando
-        // 'h' no slides 158-160 do documento Aula_20_Mapeamento_de_Texturas.pdf.
-        // Veja também a Questão 4 do Questionário 4 no Moodle.
+    //     U = texcoords.x;
+    //     V = texcoords.y;
+    // }
+    // else if ( object_id == BUNNY )
+    // {
+    //     // PREENCHA AQUI as coordenadas de textura do coelho, computadas com
+    //     // projeção planar XY em COORDENADAS DO MODELO. Utilize como referência
+    //     // o slides 99-104 do documento Aula_20_Mapeamento_de_Texturas.pdf,
+    //     // e também use as variáveis min*/max* definidas abaixo para normalizar
+    //     // as coordenadas de textura U e V dentro do intervalo [0,1]. Para
+    //     // tanto, veja por exemplo o mapeamento da variável 'p_v' utilizando
+    //     // 'h' no slides 158-160 do documento Aula_20_Mapeamento_de_Texturas.pdf.
+    //     // Veja também a Questão 4 do Questionário 4 no Moodle.
 
-        float minx = bbox_min.x;
-        float maxx = bbox_max.x;
+    //     float minx = bbox_min.x;
+    //     float maxx = bbox_max.x;
 
-        float miny = bbox_min.y;
-        float maxy = bbox_max.y;
+    //     float miny = bbox_min.y;
+    //     float maxy = bbox_max.y;
 
-        float minz = bbox_min.z;
-        float maxz = bbox_max.z;
+    //     float minz = bbox_min.z;
+    //     float maxz = bbox_max.z;
 
-        U = (position_model.x - minx)/(maxx - minx);
-        V = (position_model.y - miny)/(maxy - miny);
-    }
-    else if ( object_id == PLANE )
-    {
-        // Coordenadas de textura do plano, obtidas do arquivo OBJ.
-        U = texcoords.x;
-        V = texcoords.y;
-    }
+    //     U = (position_model.x - minx)/(maxx - minx);
+    //     V = (position_model.y - miny)/(maxy - miny);
+    // }
+    // else if ( object_id == PLANE )
+    // {
+    //     // Coordenadas de textura do plano, obtidas do arquivo OBJ.
+    //     U = texcoords.x;
+    //     V = texcoords.y;
+    // }
 
+    U = texcoords.x;
+    V = texcoords.y;
     // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-    vec3 Kd0 = texture(TextureImage2, vec2(U,V)).rgb;
+    vec3 Kd0 = texture(TextureImage, vec2(U,V)).rgb;
 
     // Equação de Iluminação
     float lambert = max(0,dot(n,l));
