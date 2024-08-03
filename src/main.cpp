@@ -42,16 +42,13 @@
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
-// struct Entity {
-//     glm::mat4 model;
-//     ObjModel* object_model;
-// };
 
 struct ObjModel
 {
     tinyobj::attrib_t                 attrib;
     std::vector<tinyobj::shape_t>     shapes;
     std::vector<tinyobj::material_t>  materials;
+    std::string                       base_path;
 
     // Este construtor lê o modelo de um arquivo utilizando a biblioteca tinyobjloader.
     // Veja: https://github.com/syoyo/tinyobjloader
@@ -70,6 +67,7 @@ struct ObjModel
             if (i != std::string::npos)
             {
                 dirname = fullpath.substr(0, i+1);
+                base_path = dirname;
                 basepath = dirname.c_str();
             }
         }
@@ -101,6 +99,12 @@ struct ObjModel
 
         printf("OK.\n");
     }
+};
+
+struct Entity {
+    glm::vec3 pos;
+    glm::mat4 model;
+    ObjModel* object_model;
 };
 
 
@@ -200,6 +204,8 @@ float g_CameraDistance = 3.5f; // Distância da câmera para a origem
 // TODO: Change this to g_UseLookAtCamera
 bool g_UsePerspectiveProjection = true;
 
+bool g_FPV = false;
+
 // Variável que controla se o texto informativo será mostrado na tela.
 bool g_ShowInfoText = true;
 
@@ -245,7 +251,7 @@ int main(int argc, char* argv[])
     // Criamos uma janela do sistema operacional, com 800 colunas e 600 linhas
     // de pixels, e com título "INF01047 ...".
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 600, "INF01047 - 00338354 - Gustavo Prolla Lacroix", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "Super Mario Bebado", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -298,12 +304,26 @@ int main(int argc, char* argv[])
     ObjModel mariomodel("../../data/mario/Mario.obj");
     ComputeNormals(&mariomodel);
     BuildTrianglesAndAddToVirtualScene(&mariomodel);
+    Entity mario = {
+        glm::vec3(0.0f, 0.0f, 0.0f),
+        Matrix_Identity(),
+        &mariomodel
+    };
 
-    if ( argc > 1 )
-    {
-        ObjModel model(argv[1]);
-        BuildTrianglesAndAddToVirtualScene(&model);
-    }
+    ObjModel brickmodel("../../data/brick/BrickBlock.obj");
+    ComputeNormals(&brickmodel);
+    BuildTrianglesAndAddToVirtualScene(&brickmodel);
+    Entity brick = {
+        glm::vec3(0.0f, -1.0f, 0.0f),
+        Matrix_Identity(),
+        &brickmodel
+    };
+
+    // if ( argc > 1 )
+    // {
+    //     ObjModel model(argv[1]);
+    //     BuildTrianglesAndAddToVirtualScene(&model);
+    // }
 
     // Inicializamos o código para renderização de texto.
     TextRendering_Init();
@@ -341,21 +361,30 @@ int main(int argc, char* argv[])
         // variáveis g_CameraDistance, g_CameraPhi, e g_CameraTheta são
         // controladas pelo mouse do usuário. Veja as funções CursorPosCallback()
         // e ScrollCallback().
-        float r = g_CameraDistance;
-        float y = r*sin(g_CameraPhi);
-        float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
-        float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
         // Veja slides 195-227 e 229-234 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
-        glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
-        glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
-        glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+        // glm::vec4 camera_position_c  = glm::vec4(x,y,z,1.0f); // Ponto "c", centro da câmera
+        // glm::vec4 camera_lookat_l    = glm::vec4(0.0f,0.0f,0.0f,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+        // glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
+        // glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
 
         // Computamos a matriz "View" utilizando os parâmetros da câmera para
         // definir o sistema de coordenadas da câmera.  Veja slides 2-14, 184-190 e 236-242 do documento Aula_08_Sistemas_de_Coordenadas.pdf.
-        glm::mat4 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
+        glm::mat4 view;
+        if (g_FPV) {
+            // view = Matrix_Camera_View();
+        } else {
+            float r = g_CameraDistance;
+            float y = r*sin(g_CameraPhi);
+            float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
+            float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
+            glm::vec4 camera_position_c  = glm::vec4(mario.pos.x+x,mario.pos.y+y,mario.pos.z+z,1.0f); // Ponto "c", centro da câmera
+            glm::vec4 camera_lookat_l    = glm::vec4(mario.pos.x,mario.pos.y,mario.pos.z,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
+            glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
+            view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
+        }
 
         // Agora computamos a matriz de Projeção.
         glm::mat4 projection;
@@ -402,6 +431,12 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         glUniform1i(g_object_id_uniform, SPHERE);
         DrawVirtualObject("Mario");
+
+        model = Matrix_Translate(brick.pos.x, brick.pos.y, brick.pos.z)
+              * Matrix_Scale(0.3f, 0.3f, 0.3f);
+        glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
+        glUniform1i(g_object_id_uniform, SPHERE);
+        DrawVirtualObject("BrickBlock");
 
         // Imprimimos na tela os ângulos de Euler que controlam a rotação do
         // terceiro cubo.
@@ -745,7 +780,8 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
         theobject.bbox_min = bbox_min;
         theobject.bbox_max = bbox_max;
 
-        theobject.texture_id = LoadTextureImage("../../data/mario/Mario_Albedo.png"); // Pegar do .mtl
+        printf("%s\n", model->materials[0].diffuse_texname.c_str());
+        theobject.texture_id = LoadTextureImage((model->base_path + model->materials[0].diffuse_texname).c_str()); // Pegar do .mtl
 
         g_VirtualScene[model->shapes[shape].name] = theobject;
     }
