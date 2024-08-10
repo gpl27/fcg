@@ -240,7 +240,7 @@ while (std::getline(file, line)) {
         int col = 0;
 
         while (iss >> caracter) {
-            float heightAdjustment = 0.0f; // Ajuste padrão para altura
+            float heightAdjustment = 0.0f; // Ajuste padrão altura
 
             // Se houver um segundo caracter, é o ajuste de altura
             if (iss >> heightAdjustment) {
@@ -438,7 +438,7 @@ int main(int argc, char* argv[])
             entity.update(delta_t);
         }
       
-        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClearColor(131.0f / 255.0f, 147.0f / 255.0f, 254.0f / 255.0f, 1.0f); // Cor do background 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(g_GpuProgramID);
 
