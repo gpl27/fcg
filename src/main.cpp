@@ -218,8 +218,64 @@ struct Entity {
     }
 };
 
+
+#include <fstream>
+#include <sstream>
+#include <iostream>
+
+void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity*& mario) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Erro ao abrir o arquivo: " << filename << std::endl;
+        return;
+    }
+
+    std::string line;
+    int row = 0;
+
+    while (std::getline(file, line)) {
+        std::istringstream iss(line);
+        std::string token;
+        int col = 0;
+        int profundidade_plataforma = 2; 
+
+        while (iss >> token) {
+            glm::vec3 position(col * 1.0f, 0.0f, -row * 1.0f);
+            if (token == "M") {
+                position.y += 1.0f;
+                mario = new Entity{"Mario", position, glm::vec3(0.01f, 0.01f, 0.01f), glm::vec3(0.0f, 0.0f, 0.0f)};
+                for (int i = 0; i < profundidade_plataforma; ++i){
+                    position.y -= 1.0f;
+                    entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)}); // Desenha n blocos logo abaixo do Mario
+                }
+            }
+            else if (token == "T") {
+                entities.emplace_back(Entity{"Tube", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+            }
+            else if (token == "B") {
+                for (int i = 0; i < profundidade_plataforma; ++i){
+                    entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    position.y -= 1.0f;
+                }
+            }
+            else if (token == "G") {
+                entities.emplace_back(Entity{"Goomba", position, glm::vec3(0.2f, 0.2f, 0.2f), glm::vec3(0.0f, 0.0f, 0.0f)});
+            }
+            else if (token == "K") {
+                entities.emplace_back(Entity{"Koopa", position, glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f)});
+            }
+            else if (token == "Y") {
+                entities.emplace_back(Entity{"YellowCube", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+            }
+            col++;
+        }
+        row++;
+    }
+}
+
+
 int main(int argc, char* argv[])
-{
+{   
     int success = glfwInit();
     if (!success)
     {
@@ -270,61 +326,61 @@ int main(int argc, char* argv[])
     ObjModel mariomodel("../../data/mario/Mario.obj");
     ComputeNormals(&mariomodel);
     BuildTrianglesAndAddToVirtualScene(&mariomodel);
-    Entity mario = {
-        "Mario",
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(0.01f, 0.01f, 0.01f),
-        glm::vec3(0.0f, 0.0f, 0.0f)
-    };
+    // Entity mario = {
+    //     "Mario",
+    //     glm::vec3(3.0f, 1.0f, 0.0f),
+    //     glm::vec3(0.01f, 0.01f, 0.01f),
+    //     glm::vec3(0.0f, 0.0f, 0.0f)
+    // };
 
     ObjModel brickmodel("../../data/brick/BrickBlock.obj");
     ComputeNormals(&brickmodel);
     BuildTrianglesAndAddToVirtualScene(&brickmodel);
-    Entity brick = {
-        "BrickBlock",
-        glm::vec3(0.0f, -1.0f, 0.0f),
-        glm::vec3(0.3f, 0.3f, 0.3f),
-        glm::vec3(0.0f, 0.0f, 0.0f)
-    };
+    // Entity brick = {
+    //     "BrickBlock",
+    //     glm::vec3(0.0f, -1.0f, 0.0f),
+    //     glm::vec3(0.3f, 0.3f, 0.3f),
+    //     glm::vec3(0.0f, 0.0f, 0.0f)
+    // };
     ObjModel yellowcubemodel("../../data/yellowcube/YellowCube.obj");
     ComputeNormals(&yellowcubemodel);
     BuildTrianglesAndAddToVirtualScene(&yellowcubemodel);
-    Entity yellowcube = {
-        "YellowCube",
-        glm::vec3(0.0f, -1.0f, 1.0f),
-        glm::vec3(0.3f, 0.3f, 0.3f),
-        glm::vec3(0.0f, 0.0f, 0.0f)
-    };
+    // Entity yellowcube = {
+    //     "YellowCube",
+    //     glm::vec3(0.0f, -1.0f, 1.0f),
+    //     glm::vec3(0.3f, 0.3f, 0.3f),
+    //     glm::vec3(0.0f, 0.0f, 0.0f)
+    // };
 
     ObjModel tubemodel("../../data/pipe/Tube.obj");
     ComputeNormals(&tubemodel);
     BuildTrianglesAndAddToVirtualScene(&tubemodel);
-    Entity pipe = {
-        "Tube",
-        glm::vec3(0.0f, 0.0f, -1.0f),
-        glm::vec3(0.3f, 0.3f, 0.3f),
-        glm::vec3(0.0f, 0.0f, 0.0f)
-    };
+    // Entity pipe = {
+    //     "Tube",
+    //     glm::vec3(0.0f, 0.0f, -1.0f),
+    //     glm::vec3(0.3f, 0.3f, 0.3f),
+    //     glm::vec3(0.0f, 0.0f, 0.0f)
+    // };
 
     ObjModel goombamodel("../../data/goomba/Goomba.obj");
     ComputeNormals(&goombamodel);
     BuildTrianglesAndAddToVirtualScene(&goombamodel);
-    Entity goomba = {
-        "Goomba",
-        glm::vec3(-1.0f, 0.0f, 0.0f),
-        glm::vec3(0.2f, 0.2f, 0.2f),
-        glm::vec3(0.0f, 0.0f, 0.0f)
-    };
+    // Entity goomba = {
+    //     "Goomba",
+    //     glm::vec3(-1.0f, 0.0f, 0.0f),
+    //     glm::vec3(0.2f, 0.2f, 0.2f),
+    //     glm::vec3(0.0f, 0.0f, 0.0f)
+    // };
 
     ObjModel koopamodel("../../data/koopa/Koopa.obj");
     ComputeNormals(&koopamodel);
     BuildTrianglesAndAddToVirtualScene(&koopamodel);
-    Entity koopa = {
-        "Koopa",
-        glm::vec3(1.0f, 0.0f, 0.0f),
-        glm::vec3(0.4f, 0.4f, 0.4f),
-        glm::vec3(0.0f, 0.0f, 0.0f)
-    };
+    // Entity koopa = {
+    //     "Koopa",
+    //     glm::vec3(1.0f, 0.0f, 0.0f),
+    //     glm::vec3(0.4f, 0.4f, 0.4f),
+    //     glm::vec3(0.0f, 0.0f, 0.0f)
+    // };
 
     TextRendering_Init();
     glEnable(GL_DEPTH_TEST);
@@ -333,13 +389,25 @@ int main(int argc, char* argv[])
     glFrontFace(GL_CCW);
 
     double curr_t = glfwGetTime();
+
+    Entity* mario = nullptr; // Ponteiro para Mario
+    std::vector<Entity> entities;
+    LoadMap("../../src/map.txt", entities, mario); // Função que abre arquivo .txt para carregar o mapa do jogo
+
     while (!glfwWindowShouldClose(window))
-    {
+    {   
+
         double delta_t = glfwGetTime() - curr_t;
         curr_t = glfwGetTime();
 
-        mario.update(delta_t);
-
+        mario->update(delta_t); 
+        mario->update(delta_t); //Eu não faço a menor ideia porque ta tendo que fazer o update 2x pra ele se movimentar KKKKKK
+        
+        // Atualização das entidades...
+        for (auto& entity : entities) {
+            entity.update(delta_t);
+        }
+      
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(g_GpuProgramID);
@@ -361,8 +429,8 @@ int main(int argc, char* argv[])
             float y = r*sin(g_CameraPhi);
             float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
             float x = r*cos(g_CameraPhi)*sin(g_CameraTheta);
-            glm::vec4 camera_position_c  = glm::vec4(mario.pos.x+x,mario.pos.y+y,mario.pos.z+z,1.0f); // Ponto "c", centro da câmera
-            glm::vec4 camera_lookat_l    = glm::vec4(mario.pos.x,mario.pos.y,mario.pos.z,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
+            glm::vec4 camera_position_c  = glm::vec4(mario->pos.x+x,mario->pos.y+y,mario->pos.z+z,1.0f); // Ponto "c", centro da câmera
+            glm::vec4 camera_lookat_l    = glm::vec4(mario->pos.x,mario->pos.y,mario->pos.z,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
             glm::vec4 camera_view_vector = camera_lookat_l - camera_position_c; // Vetor "view", sentido para onde a câmera está virada
             glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
             view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
@@ -370,7 +438,7 @@ int main(int argc, char* argv[])
 
         glm::mat4 projection;
         float nearplane = -0.1f;  // Posição do "near plane"
-        float farplane  = -10.0f; // Posição do "far plane"
+        float farplane  = -20.0f; // Posição do "far plane"
 
         if (g_UsePerspectiveProjection)
         {
@@ -389,13 +457,18 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(g_projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
 
-        mario.draw();
-        brick.draw();
-        yellowcube.draw();
-        pipe.draw();
-        goomba.draw();
-        koopa.draw();
+        // mario.draw();
+        // brick.draw();
+        // yellowcube.draw();
+        // pipe.draw();
+        // goomba.draw();
+        // koopa.draw();
 
+        // Função que desenha todas as entidades do mapa
+        for (auto& entity : entities) {
+            entity.draw();
+        }
+        mario->draw();
 
         TextRendering_ShowProjection(window);
         TextRendering_ShowFramesPerSecond(window);
