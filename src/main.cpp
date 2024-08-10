@@ -232,43 +232,73 @@ void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity
 
     std::string line;
     int row = 0;
+    int profundidade_plataforma = 1; // numero de camadas de blocos do chão 
 
-    while (std::getline(file, line)) {
+while (std::getline(file, line)) {
         std::istringstream iss(line);
-        std::string token;
+        std::string caracter;
         int col = 0;
-        int profundidade_plataforma = 2; 
 
-        while (iss >> token) {
-            glm::vec3 position(col * 1.0f, 0.0f, -row * 1.0f);
-            if (token == "M") {
-                position.y += 1.0f;
-                mario = new Entity{"Mario", position, glm::vec3(0.01f, 0.01f, 0.01f), glm::vec3(0.0f, 0.0f, 0.0f)};
-                for (int i = 0; i < profundidade_plataforma; ++i){
-                    position.y -= 1.0f;
-                    entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)}); // Desenha n blocos logo abaixo do Mario
+        while (iss >> caracter) {
+            float heightAdjustment = 0.0f; // Ajuste padrão para altura
+
+            // Se houver um segundo caracter, é o ajuste de altura
+            if (iss >> heightAdjustment) {
+                glm::vec3 position(col * 1.0f, heightAdjustment, -row * 1.0f);
+                if (caracter == "M") {
+                    mario = new Entity{"Mario", position, glm::vec3(0.01f, 0.01f, 0.01f), glm::vec3(0.0f, 0.0f, 0.0f)};
+                    if (heightAdjustment > 0){
+                        position.y -= heightAdjustment;
+                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    }
                 }
-            }
-            else if (token == "T") {
-                entities.emplace_back(Entity{"Tube", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-            }
-            else if (token == "B") {
-                for (int i = 0; i < profundidade_plataforma; ++i){
-                    entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    position.y -= 1.0f;
+                else if (caracter == "T") {
+                    entities.emplace_back(Entity{"Tube", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    if (heightAdjustment > 0){
+                        position.y -= heightAdjustment;
+                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    }
                 }
+                else if (caracter == "B") {
+                    if (heightAdjustment > 0){
+                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                        position.y -= heightAdjustment;
+                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    }
+                    for (int i = 0; i < profundidade_plataforma; ++i){
+                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                        position.y -= 1.0f;
+                    }
+                }
+                else if (caracter == "G") {
+                    position.y += 0.5f;
+                    entities.emplace_back(Entity{"Goomba", position, glm::vec3(0.2f, 0.2f, 0.2f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    position.y -= 0.5f;
+                    if (heightAdjustment > 0){
+                        position.y -= heightAdjustment;
+                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    }                    
+                }
+                else if (caracter == "K") {
+                    position.y += 0.5f;
+                    entities.emplace_back(Entity{"Koopa", position, glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    position.y -= 0.5f;
+                    if (heightAdjustment > 0){
+                        position.y -= heightAdjustment;
+                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    }                    
+                }
+                else if (caracter == "Y") {
+                    entities.emplace_back(Entity{"YellowCube", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    if (heightAdjustment > 0){
+                        position.y -= heightAdjustment;
+                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
+                    }                    
+                }
+                col++;
             }
-            else if (token == "G") {
-                entities.emplace_back(Entity{"Goomba", position, glm::vec3(0.2f, 0.2f, 0.2f), glm::vec3(0.0f, 0.0f, 0.0f)});
-            }
-            else if (token == "K") {
-                entities.emplace_back(Entity{"Koopa", position, glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f)});
-            }
-            else if (token == "Y") {
-                entities.emplace_back(Entity{"YellowCube", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-            }
-            col++;
         }
+    
         row++;
     }
 }
@@ -464,7 +494,7 @@ int main(int argc, char* argv[])
         // goomba.draw();
         // koopa.draw();
 
-        // Função que desenha todas as entidades do mapa
+        // Desenha entidades do mapa
         for (auto& entity : entities) {
             entity.draw();
         }

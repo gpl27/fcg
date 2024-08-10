@@ -1,16 +1,27 @@
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  B  B  B  B  B
-B  B  B  B  M  B  B  B  B
+B 1  B 2  B 3  B 4  T 5  B 4  B 3  B 2  B 1
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  B 0  B 0  Y 3  B 0  B 0  Y 2  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 2  B 0
+T 1  B 0  B 0  B 0  B 0  B 0  B 0  Y 2  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  K 1  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 2  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  Y 2  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 2  B 0  B 0  G 1  B 0  B 0  B 0  B 0
+B 0  Y 2  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 2  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  G 1  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  G 1  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  T 1  B 0  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  K 1  B 0  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 2  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  Y 2  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 2  B 0
+B 0  T 1  B 0  B 0  B 0  B 0  B 0  B 2  B 0
+B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0  B 0
+B 0  B 0  B 0  B 0  M 1  B 0  B 0  B 0  B 0
