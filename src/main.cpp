@@ -190,32 +190,38 @@ struct SceneObject
 std::map<std::string, SceneObject> g_VirtualScene;
 
 
-struct Entity {
-    std::string so_name;
-    glm::vec3 pos;
-    glm::vec3 scale;
-    glm::vec3 velocity;
-    void draw() {
-        glm::mat4 model = Matrix_Scale(scale.x, scale.y, scale.z)
-                        * Matrix_Translate(pos.x/scale.x, pos.y/scale.y, pos.z/scale.z);
-        g_VirtualScene[so_name].draw(model);
-    }
-    void update(double delta) {
-        // User interaction
-        velocity.z = (g_KeyW_Pressed)? 3 : 0;
-        velocity.z = (g_KeyS_Pressed)? -3 : velocity.z;
-        velocity.x = (g_KeyD_Pressed)? -3 : 0;
-        velocity.x = (g_KeyA_Pressed)? 3 : velocity.x;
-        // Gravity
+class Entity {
+    public:
+        std::string so_name;
+        glm::vec3 pos;
+        glm::vec3 scale;
+        glm::vec3 velocity;
+        Entity(std::string name, glm::vec3 p, glm::vec3 s, glm::vec3 v) {
+            so_name = name;
+            pos = p;
+            scale = s;
+            velocity = v;
+        }
+        void draw() {
+            glm::mat4 model = Matrix_Scale(this->scale.x, this->scale.y, this->scale.z)
+                            * Matrix_Translate(this->pos.x/this->scale.x, this->pos.y/this->scale.y, this->pos.z/this->scale.z);
+            g_VirtualScene[so_name].draw(model);
+        }
+        void update(double delta) {
+            // User interaction
+            velocity.z = (g_KeyW_Pressed)? 3 : 0;
+            velocity.z = (g_KeyS_Pressed)? -3 : velocity.z;
+            velocity.x = (g_KeyD_Pressed)? -3 : 0;
+            velocity.x = (g_KeyA_Pressed)? 3 : velocity.x;
+            // Gravity
 
-        // Check for collisions
+            // Check for collisions
 
-        // Update position
-        pos.x += (velocity.x*delta);
-        pos.y += (velocity.y*delta);
-        pos.z += (velocity.z*delta);
-        // printf("%f\n", pos.z);
-    }
+            // Update position
+            pos.x += (velocity.x*delta);
+            pos.y += (velocity.y*delta);
+            pos.z += (velocity.z*delta);
+        }
 };
 
 
@@ -232,9 +238,9 @@ void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity
 
     std::string line;
     int row = 0;
-    int profundidade_plataforma = 1; // numero de camadas de blocos do chão 
+    // int profundidade_plataforma = 1; // numero de camadas de blocos do chão 
 
-while (std::getline(file, line)) {
+    while (std::getline(file, line)) {
         std::istringstream iss(line);
         std::string caracter;
         int col = 0;
@@ -244,61 +250,34 @@ while (std::getline(file, line)) {
 
             // Se houver um segundo caracter, é o ajuste de altura
             if (iss >> heightAdjustment) {
-                glm::vec3 position(col * 1.0f, heightAdjustment, -row * 1.0f);
                 if (caracter == "M") {
-                    mario = new Entity{"Mario", position, glm::vec3(0.01f, 0.01f, 0.01f), glm::vec3(0.0f, 0.0f, 0.0f)};
-                    if (heightAdjustment > 0){
-                        position.y -= heightAdjustment;
-                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    }
+                    mario = new Entity("Mario", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.01f, 0.01f, 0.01f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                 }
                 else if (caracter == "T") {
-                    entities.emplace_back(Entity{"Tube", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    if (heightAdjustment > 0){
-                        position.y -= heightAdjustment;
-                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    }
+                    entities.emplace_back("Tube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                 }
                 else if (caracter == "B") {
-                    if (heightAdjustment > 0){
-                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                        position.y -= heightAdjustment;
-                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    }
-                    for (int i = 0; i < profundidade_plataforma; ++i){
-                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                        position.y -= 1.0f;
-                    }
+                    if (heightAdjustment > 0)
+                        entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                 }
                 else if (caracter == "G") {
-                    position.y += 0.5f;
-                    entities.emplace_back(Entity{"Goomba", position, glm::vec3(0.2f, 0.2f, 0.2f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    position.y -= 0.5f;
-                    if (heightAdjustment > 0){
-                        position.y -= heightAdjustment;
-                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    }                    
+                    entities.emplace_back("Goomba", glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.2f, 0.2f, 0.2f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                 }
                 else if (caracter == "K") {
-                    position.y += 0.5f;
-                    entities.emplace_back(Entity{"Koopa", position, glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    position.y -= 0.5f;
-                    if (heightAdjustment > 0){
-                        position.y -= heightAdjustment;
-                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    }                    
+                    entities.emplace_back("Koopa", glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                 }
                 else if (caracter == "Y") {
-                    entities.emplace_back(Entity{"YellowCube", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    if (heightAdjustment > 0){
-                        position.y -= heightAdjustment;
-                        entities.emplace_back(Entity{"BrickBlock", position, glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f)});
-                    }                    
+                    entities.emplace_back("YellowCube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                 }
                 col++;
             }
         }
-    
         row++;
     }
 }
@@ -356,61 +335,26 @@ int main(int argc, char* argv[])
     ObjModel mariomodel("../../data/mario/Mario.obj");
     ComputeNormals(&mariomodel);
     BuildTrianglesAndAddToVirtualScene(&mariomodel);
-    // Entity mario = {
-    //     "Mario",
-    //     glm::vec3(3.0f, 1.0f, 0.0f),
-    //     glm::vec3(0.01f, 0.01f, 0.01f),
-    //     glm::vec3(0.0f, 0.0f, 0.0f)
-    // };
 
     ObjModel brickmodel("../../data/brick/BrickBlock.obj");
     ComputeNormals(&brickmodel);
     BuildTrianglesAndAddToVirtualScene(&brickmodel);
-    // Entity brick = {
-    //     "BrickBlock",
-    //     glm::vec3(0.0f, -1.0f, 0.0f),
-    //     glm::vec3(0.3f, 0.3f, 0.3f),
-    //     glm::vec3(0.0f, 0.0f, 0.0f)
-    // };
+
     ObjModel yellowcubemodel("../../data/yellowcube/YellowCube.obj");
     ComputeNormals(&yellowcubemodel);
     BuildTrianglesAndAddToVirtualScene(&yellowcubemodel);
-    // Entity yellowcube = {
-    //     "YellowCube",
-    //     glm::vec3(0.0f, -1.0f, 1.0f),
-    //     glm::vec3(0.3f, 0.3f, 0.3f),
-    //     glm::vec3(0.0f, 0.0f, 0.0f)
-    // };
 
     ObjModel tubemodel("../../data/pipe/Tube.obj");
     ComputeNormals(&tubemodel);
     BuildTrianglesAndAddToVirtualScene(&tubemodel);
-    // Entity pipe = {
-    //     "Tube",
-    //     glm::vec3(0.0f, 0.0f, -1.0f),
-    //     glm::vec3(0.3f, 0.3f, 0.3f),
-    //     glm::vec3(0.0f, 0.0f, 0.0f)
-    // };
 
     ObjModel goombamodel("../../data/goomba/Goomba.obj");
     ComputeNormals(&goombamodel);
     BuildTrianglesAndAddToVirtualScene(&goombamodel);
-    // Entity goomba = {
-    //     "Goomba",
-    //     glm::vec3(-1.0f, 0.0f, 0.0f),
-    //     glm::vec3(0.2f, 0.2f, 0.2f),
-    //     glm::vec3(0.0f, 0.0f, 0.0f)
-    // };
 
     ObjModel koopamodel("../../data/koopa/Koopa.obj");
     ComputeNormals(&koopamodel);
     BuildTrianglesAndAddToVirtualScene(&koopamodel);
-    // Entity koopa = {
-    //     "Koopa",
-    //     glm::vec3(1.0f, 0.0f, 0.0f),
-    //     glm::vec3(0.4f, 0.4f, 0.4f),
-    //     glm::vec3(0.0f, 0.0f, 0.0f)
-    // };
 
     TextRendering_Init();
     glEnable(GL_DEPTH_TEST);
@@ -420,7 +364,7 @@ int main(int argc, char* argv[])
 
     double curr_t = glfwGetTime();
 
-    Entity* mario = nullptr; // Ponteiro para Mario
+    Entity* mario;
     std::vector<Entity> entities;
     LoadMap("../../src/map.txt", entities, mario); // Função que abre arquivo .txt para carregar o mapa do jogo
 
@@ -430,13 +374,11 @@ int main(int argc, char* argv[])
         double delta_t = glfwGetTime() - curr_t;
         curr_t = glfwGetTime();
 
-        mario->update(delta_t); 
-        mario->update(delta_t); //Eu não faço a menor ideia porque ta tendo que fazer o update 2x pra ele se movimentar KKKKKK
-        
         // Atualização das entidades...
-        for (auto& entity : entities) {
+        for (auto entity : entities) {
             entity.update(delta_t);
         }
+        mario->update(delta_t); 
       
         glClearColor(131.0f / 255.0f, 147.0f / 255.0f, 254.0f / 255.0f, 1.0f); // Cor do background 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -486,16 +428,8 @@ int main(int argc, char* argv[])
         glUniformMatrix4fv(g_view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(g_projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
 
-
-        // mario.draw();
-        // brick.draw();
-        // yellowcube.draw();
-        // pipe.draw();
-        // goomba.draw();
-        // koopa.draw();
-
         // Desenha entidades do mapa
-        for (auto& entity : entities) {
+        for (auto entity : entities) {
             entity.draw();
         }
         mario->draw();
