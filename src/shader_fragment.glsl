@@ -6,6 +6,7 @@
 // "shader_vertex.glsl" e "main.cpp".
 in vec4 position_world;
 in vec4 normal;
+in vec4 color_v;
 
 // Posição do vértice atual no sistema de coordenadas local do modelo.
 in vec4 position_model;
@@ -30,81 +31,75 @@ uniform vec4 bbox_max;
 // Variáveis para acesso das imagens de textura
 uniform sampler2D TextureImage;
 
+// Variáveis do modelo de iluminação
+uniform uint light_model;
+uniform uint shading;
+
 // O valor de saída ("out") de um Fragment Shader é a cor final do fragmento.
 out vec4 color;
 
-// Constantes
-#define M_PI   3.14159265358979323846
-#define M_PI_2 1.57079632679489661923
-
 void main()
 {
-    // Obtemos a posição da câmera utilizando a inversa da matriz que define o
-    // sistema de coordenadas da câmera.
-    vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
-    vec4 camera_position = inverse(view) * origin;
+    if (shading == uint(0)) { // Gourard Shading
+        color = color_v;
+    } else {
+        // Obtemos a posição da câmera utilizando a inversa da matriz que define o
+        // sistema de coordenadas da câmera.
+        vec4 origin = vec4(0.0, 0.0, 0.0, 1.0);
+        vec4 camera_position = inverse(view) * origin;
 
-    // O fragmento atual é coberto por um ponto que percente à superfície de um
-    // dos objetos virtuais da cena. Este ponto, p, possui uma posição no
-    // sistema de coordenadas global (World coordinates). Esta posição é obtida
-    // através da interpolação, feita pelo rasterizador, da posição de cada
-    // vértice.
-    vec4 p = position_world;
+        // O fragmento atual é coberto por um ponto que percente à superfície de um
+        // dos objetos virtuais da cena. Este ponto, p, possui uma posição no
+        // sistema de coordenadas global (World coordinates). Esta posição é obtida
+        // através da interpolação, feita pelo rasterizador, da posição de cada
+        // vértice.
+        vec4 p = position_world;
 
-    // Normal do fragmento atual, interpolada pelo rasterizador a partir das
-    // normais de cada vértice.
-    vec4 n = normalize(normal);
+        // Normal do fragmento atual, interpolada pelo rasterizador a partir das
+        // normais de cada vértice.
+        vec4 n = normalize(normal);
 
-    // Vetor que define o sentido da câmera em relação ao ponto atual.
-    vec4 v = normalize(camera_position - p);
-    // Vetor que define o sentido da fonte de luz em relação ao ponto atual.
-    vec4 l = normalize(v);
+        // Vetor que define o sentido da câmera em relação ao ponto atual.
+        vec4 v = normalize(camera_position - p);
+        // Vetor que define o sentido da fonte de luz em relação ao ponto atual.
+        vec4 l = normalize(v);
 
-    vec4 r = -l + 2*n*(dot(n, l)); 
+        vec4 r = -l + 2*n*(dot(n, l)); 
 
-
-    // Coordenadas de textura U e V
-    float U = 0.0;
-    float V = 0.0;
-
-    U = texcoords.x;
-    V = texcoords.y;
-    // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
-    vec3 Kd0 = texture(TextureImage, vec2(U,V)).rgb;
-    vec3 Ka = vec3(0.005, 0.005, 0.005);
-    vec3 Ks = vec3(0.0, 0.0, 0.0);
-    float q = 1;
-
-    // Espectro da fonte de iluminação
-    vec3 I = vec3(1.0, 1.0, 1.0); // PREENCH AQUI o espectro da fonte de luz
-
-    // Espectro da luz ambiente
-    vec3 Ia = vec3(1.0, 1.0, 1.0); // PREENCHA AQUI o espectro da luz ambiente
-
-    // Termo difuso utilizando a lei dos cossenos de Lambert
-    vec3 lambert_diffuse_term = Kd0*I*max(0, dot(n, l)); // PREENCHA AQUI o termo difuso de Lambert
-
-    // Termo ambiente
-    vec3 ambient_term = Ka*Ia; // PREENCHA AQUI o termo ambiente
-
-    // Termo especular utilizando o modelo de iluminação de Phong
-    vec3 phong_specular_term  = Ks*I*pow((max(0, dot(r, v))), q); // PREENCH AQUI o termo especular de Phong
-
-    color.rgb = lambert_diffuse_term + ambient_term + phong_specular_term;
+        // Half-vector de Blinn-Phong
+        vec4 h = normalize(v + l);
 
 
-    // NOTE: Se você quiser fazer o rendering de objetos transparentes, é
-    // necessário:
-    // 1) Habilitar a operação de "blending" de OpenGL logo antes de realizar o
-    //    desenho dos objetos transparentes, com os comandos abaixo no código C++:
-    //      glEnable(GL_BLEND);
-    //      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    // 2) Realizar o desenho de todos objetos transparentes *após* ter desenhado
-    //    todos os objetos opacos; e
-    // 3) Realizar o desenho de objetos transparentes ordenados de acordo com
-    //    suas distâncias para a câmera (desenhando primeiro objetos
-    //    transparentes que estão mais longe da câmera).
-    // Alpha default = 1 = 100% opaco = 0% transparente
+        // Coordenadas de textura U e V
+        float U = texcoords.x;
+        float V = texcoords.y;
+        // Obtemos a refletância difusa a partir da leitura da imagem TextureImage0
+        vec3 Kd0 = texture(TextureImage, vec2(U,V)).rgb;
+        vec3 Ka = vec3(0.005, 0.005, 0.005);
+
+        // Espectro da fonte de iluminação
+        vec3 I = vec3(1.0, 1.0, 1.0); 
+
+        // Espectro da luz ambiente
+        vec3 Ia = vec3(1.0, 1.0, 1.0);
+
+        // Termo difuso utilizando a lei dos cossenos de Lambert
+        vec3 lambert_diffuse_term = Kd0*I*max(0, dot(n, l)); 
+
+        // Termo ambiente
+        vec3 ambient_term = Ka*Ia; 
+
+        // Termo especular utilizando o modelo de iluminação de Phong
+        vec3 blinn_phong_specular_term = vec3(0.0, 0.0, 0.0);
+        if (light_model == uint(1)) {
+            vec3 Ks = vec3(1.0, 1.0, 1.0);
+            float ql = 80;
+            blinn_phong_specular_term  = Ks*I*pow(max(0, dot(n, h)), ql); 
+        }
+
+        color.rgb = lambert_diffuse_term +  blinn_phong_specular_term;
+    }
+
     color.a = 1;
 
     // Cor final com correção gamma, considerando monitor sRGB.

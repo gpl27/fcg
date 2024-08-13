@@ -137,6 +137,8 @@ GLint g_object_id_uniform;
 GLint g_bbox_min_uniform;
 GLint g_bbox_max_uniform;
 GLint g_texture_uniform;
+GLint g_light_model_uniform;
+GLint g_shading_uniform;
 
 std::stack<glm::mat4>  g_MatrixStack;
 
@@ -181,6 +183,8 @@ struct SceneObject
     glm::vec3    bbox_min; // Axis-Aligned Bounding Box do objeto
     glm::vec3    bbox_max;
     GLuint       texture_id;
+    GLuint       light_model; // 0 - Lambert (difuso); 1 - Blinn-Phong
+    GLuint       shading;     // 0 - Gourard Shading; 1 - Phong Shading
     void draw(glm::mat4 model) {
         glUniformMatrix4fv(g_model_uniform, 1 , GL_FALSE , glm::value_ptr(model));
         DrawVirtualObject(name.c_str());
@@ -514,6 +518,8 @@ void DrawVirtualObject(const char* object_name)
     glUniform4f(g_bbox_min_uniform, bbox_min.x, bbox_min.y, bbox_min.z, 1.0f);
     glUniform4f(g_bbox_max_uniform, bbox_max.x, bbox_max.y, bbox_max.z, 1.0f);
     glUniform1i(g_texture_uniform, g_VirtualScene[object_name].texture_id);
+    glUniform1ui(g_light_model_uniform, g_VirtualScene[object_name].light_model);
+    glUniform1ui(g_shading_uniform, g_VirtualScene[object_name].shading);
 
     // Pedimos para a GPU rasterizar os vértices dos eixos XYZ
     // apontados pelo VAO como linhas. Veja a definição de
@@ -568,13 +574,15 @@ void LoadShadersFromFiles()
     // Buscamos o endereço das variáveis definidas dentro do Vertex Shader.
     // Utilizaremos estas variáveis para enviar dados para a placa de vídeo
     // (GPU)! Veja arquivo "shader_vertex.glsl" e "shader_fragment.glsl".
-    g_model_uniform      = glGetUniformLocation(g_GpuProgramID, "model"); // Variável da matriz "model"
-    g_view_uniform       = glGetUniformLocation(g_GpuProgramID, "view"); // Variável da matriz "view" em shader_vertex.glsl
-    g_projection_uniform = glGetUniformLocation(g_GpuProgramID, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
-    g_object_id_uniform  = glGetUniformLocation(g_GpuProgramID, "object_id"); // Variável "object_id" em shader_fragment.glsl
-    g_bbox_min_uniform   = glGetUniformLocation(g_GpuProgramID, "bbox_min");
-    g_bbox_max_uniform   = glGetUniformLocation(g_GpuProgramID, "bbox_max");
-    g_texture_uniform    = glGetUniformLocation(g_GpuProgramID, "TextureImage");
+    g_model_uniform       = glGetUniformLocation(g_GpuProgramID, "model"); // Variável da matriz "model"
+    g_view_uniform        = glGetUniformLocation(g_GpuProgramID, "view"); // Variável da matriz "view" em shader_vertex.glsl
+    g_projection_uniform  = glGetUniformLocation(g_GpuProgramID, "projection"); // Variável da matriz "projection" em shader_vertex.glsl
+    g_object_id_uniform   = glGetUniformLocation(g_GpuProgramID, "object_id"); // Variável "object_id" em shader_fragment.glsl
+    g_bbox_min_uniform    = glGetUniformLocation(g_GpuProgramID, "bbox_min");
+    g_bbox_max_uniform    = glGetUniformLocation(g_GpuProgramID, "bbox_max");
+    g_texture_uniform     = glGetUniformLocation(g_GpuProgramID, "TextureImage");
+    g_light_model_uniform = glGetUniformLocation(g_GpuProgramID, "light_model");
+    g_shading_uniform     = glGetUniformLocation(g_GpuProgramID, "shading");
 
     // Variáveis em "shader_fragment.glsl" para acesso das imagens de textura
     // glUseProgram(g_GpuProgramID);
@@ -756,6 +764,23 @@ void BuildTrianglesAndAddToVirtualScene(ObjModel* model)
 
         printf("%s\n", model->materials[0].diffuse_texname.c_str());
         theobject.texture_id = LoadTextureImage((model->base_path + model->materials[0].diffuse_texname).c_str()); // Pegar do .mtl
+
+        theobject.light_model = 0; // Default: Lambert (difuse)
+        theobject.shading = 0;     // Default: Gourard Shading
+        if (theobject.name == "Pipe") {
+            theobject.light_model = 1; // Pipe object uses Blinn-Phong Model
+            theobject.shading = 1; // and Phong shading
+        }
+        if (theobject.name == "Mario") {
+            theobject.shading = 1; // Mario uses Phong shading
+        }
+        if (theobject.name == "Koopa") {
+            theobject.shading = 1; // Koopa uses Phong shading
+        }
+        if (theobject.name == "YellowCube") {
+            theobject.light_model = 1; // YellowCube uses Blinn-Phong model
+            theobject.shading = 1; // YellowCube uses Phong shading
+        }
 
         g_VirtualScene[model->shapes[shape].name] = theobject;
     }
