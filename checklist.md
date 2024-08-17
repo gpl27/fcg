@@ -1,24 +1,24 @@
 ### Check list trabalho
 
-- [ ] Utilizar no máximo 15% de código pronto 
-- [ ] Interação em tempo real
-- [ ] Objetivo e lógica de controle não-trivial
-- [ ] Utilizar *Model matrix*, *Projection matrix*, *View matrix*
-- [ ] Não pode utilizar bibliotecas existentes para o cálculo de câmera
-- [ ] Permitir interação com o usuário através do mouse e do teclado
-- [ ] Objetos virtuais representados através de malhas poligonais complexas (malhas de triângulos)
-- [ ] Conter no mínimo um modelo geométrico da complexidade igual ou maior que o modelo "cow.obj"
-- [ ] Transformações geométricas de objetos virtuais
-- [ ] Ter uma câmera *look-at* e uma *câmera livre*
-- [ ] No mínimo um objeto virtual deve ser copiado com duas ou mais Model matrix aplicadas ao mesmo conjunto de vértices
+- [x] Utilizar no máximo 15% de código pronto 
+- [x] Interação em tempo real
+- [x] Objetivo e lógica de controle não-trivial
+- [x] Utilizar *Model matrix*, *Projection matrix*, *View matrix*
+- [x] Não pode utilizar bibliotecas existentes para o cálculo de câmera
+- [x] Permitir interação com o usuário através do mouse e do teclado
+- [x] Objetos virtuais representados através de malhas poligonais complexas (malhas de triângulos)
+- [x] Conter no mínimo um modelo geométrico da complexidade igual ou maior que o modelo "cow.obj"
+- [x] Transformações geométricas de objetos virtuais
+- [x] Ter uma câmera *look-at* e uma *câmera livre*
+- [x] No mínimo um objeto virtual deve ser copiado com duas ou mais Model matrix aplicadas ao mesmo conjunto de vértices
 - [ ] Utilizar no mínimo três tipos de teste de intersecção (por exemplo, um teste cubo-cubo, um teste cubo-plano, e um teste ponto-esfera)
 - [ ]  Testes de colisão devem ser implementados em um arquivo à parte, nomeado **"collisions.cpp"**
-- [ ] Conter objetos com os modelos de iluminação difusa (Lambert) e Blinn-Phong
-- [ ] Conter no mínimo um objeto com modelo de interpolação para iluminação de Gouraud
-- [ ] Conter no mínimo um objeto com modelo de interpolação para iluminação de Phong
-- [ ] TODOS objetos virtuais devem ter suas cores definidas através de texturas representadas por imagens (no mínimo três imagens distintas)
+- [x] Conter objetos com os modelos de iluminação difusa (Lambert) e Blinn-Phong
+- [x] Conter no mínimo um objeto com modelo de interpolação para iluminação de Gouraud
+- [x] Conter no mínimo um objeto com modelo de interpolação para iluminação de Phong
+- [x] TODOS objetos virtuais devem ter suas cores definidas através de texturas representadas por imagens (no mínimo três imagens distintas)
 - [ ] Conter no mínimo um objeto virtual com movimentação definida através de uma curva de Bézier cúbica
-- [ ] Todas as movimentações de objetos (incluindo da câmera) devem ser computadas baseado no tempo. As movimentações devem ocorrer sempre na mesma velocidade independente da velocidade da CPU onde o programa está sendo executado
+- [x] Todas as movimentações de objetos (incluindo da câmera) devem ser computadas baseado no tempo. As movimentações devem ocorrer sempre na mesma velocidade independente da velocidade da CPU onde o programa está sendo executado
 
 ### Check list entrega
 
