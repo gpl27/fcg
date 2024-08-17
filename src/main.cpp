@@ -419,7 +419,6 @@ int main(int argc, char* argv[])
 
                 glm::vec4 w = -camera_view_vector/norm(camera_view_vector);
                 glm::vec4 u = crossproduct(camera_up_vector, w)/norm(crossproduct(camera_up_vector, w));
-                glm::vec4 camera_position_c  = glm::vec4(mario->pos.x+x,mario->pos.y+y+5.0f,mario->pos.z+z-3.0f,1.0f); // Ponto "c", centro da câmera
 
                 float now = (float) glfwGetTime();
                 delta_time = now - time;
