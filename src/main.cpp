@@ -216,7 +216,7 @@ class Entity {
         }
         void update(double delta) {
             // User interaction
-            if (!g_CameraOption){
+            // if (!g_CameraOption){
                 velocity.z = (g_KeyW_Pressed)? 3 : 0;
                 velocity.z = (g_KeyS_Pressed)? -3 : velocity.z;
                 velocity.x = (g_KeyD_Pressed)? -3 : 0;
@@ -229,7 +229,7 @@ class Entity {
                 pos.x += (velocity.x*delta);
                 pos.y += (velocity.y*delta);
                 pos.z += (velocity.z*delta);
-            }
+            // }
         }
 };
 
@@ -419,6 +419,7 @@ int main(int argc, char* argv[])
 
                 glm::vec4 w = -camera_view_vector/norm(camera_view_vector);
                 glm::vec4 u = crossproduct(camera_up_vector, w)/norm(crossproduct(camera_up_vector, w));
+                glm::vec4 camera_position_c  = glm::vec4(mario->pos.x+x,mario->pos.y+y+5.0f,mario->pos.z+z-3.0f,1.0f); // Ponto "c", centro da câmera
 
                 float now = (float) glfwGetTime();
                 delta_time = now - time;
@@ -426,18 +427,18 @@ int main(int argc, char* argv[])
 
                 camera_view_vector =  - glm::vec4 (x,y,z, 0.0f);
 
-                if(g_KeyW_Pressed){
-                    camera_position_c -= freeCam_speed*delta_time*w;
-                }
-                if(g_KeyA_Pressed){
-                    camera_position_c -= freeCam_speed*delta_time*u;
-                }
-                if(g_KeyS_Pressed){
-                    camera_position_c += freeCam_speed*delta_time*w;
-                }
-                if(g_KeyD_Pressed){
-                    camera_position_c += freeCam_speed*delta_time*u;
-                }
+                // if(g_KeyW_Pressed){
+                //     camera_position_c -= freeCam_speed*delta_time*w;
+                // }
+                // if(g_KeyA_Pressed){
+                //     camera_position_c -= freeCam_speed*delta_time*u;
+                // }
+                // if(g_KeyS_Pressed){
+                //     camera_position_c += freeCam_speed*delta_time*w;
+                // }
+                // if(g_KeyD_Pressed){
+                //     camera_position_c += freeCam_speed*delta_time*u;
+                // }
 
                 view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
             }
