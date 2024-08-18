@@ -201,23 +201,53 @@ class Entity {
         glm::vec3 pos;
         glm::vec3 scale;
         glm::vec3 velocity;
+        glm::vec4 dir;
+        float theta;
         Entity(std::string name, glm::vec3 p, glm::vec3 s, glm::vec3 v) {
             so_name = name;
             pos = p;
             scale = s;
             velocity = v;
+            theta = 0;
+            dir = glm::vec4(0, 0, 1, 0);
         }
         void draw() {
             glm::mat4 model = Matrix_Scale(this->scale.x, this->scale.y, this->scale.z)
-                            * Matrix_Translate(this->pos.x/this->scale.x, this->pos.y/this->scale.y, this->pos.z/this->scale.z);
+                            * Matrix_Translate(this->pos.x/this->scale.x, this->pos.y/this->scale.y, this->pos.z/this->scale.z)
+                            * Matrix_Rotate_Y(theta);
             g_VirtualScene[so_name].draw(model);
         }
         void update(double delta) {
-            velocity.z = (g_KeyW_Pressed)? 3 : 0;
-            velocity.z = (g_KeyS_Pressed)? -3 : velocity.z;
-            velocity.x = (g_KeyD_Pressed)? -3 : 0;
-            velocity.x = (g_KeyA_Pressed)? 3 : velocity.x;
-            // Gravity
+            // Update theta
+            if (so_name == "Mario") {
+                theta = g_CameraTheta + 3.1415;
+                dir = Matrix_Rotate_Y(theta)*glm::vec4(0,0,1,0);
+            }
+
+            velocity.z = 0;
+            velocity.x = 0;
+            glm::vec4 right = Matrix_Rotate_Y(3.1415/2)*dir;
+            glm::vec4 direction = glm::vec4(0, 0, 0, 0);
+            if (g_KeyW_Pressed) {
+                direction = direction + dir;
+            } 
+            if (g_KeyS_Pressed){
+                direction -= dir;
+            } 
+            if (g_KeyA_Pressed) {
+                direction += right;
+            }
+            if (g_KeyD_Pressed) {
+                direction -= right;
+            }
+            double sum = fabs(direction.x) + fabs(direction.z);
+            if (sum != 0) {
+                double zpart = (direction.z)/sum;
+                double xpart = (direction.x)/sum;
+                velocity.x = xpart*3;
+                velocity.z = zpart*3;
+            }
+
 
             // Check for collisions
 
@@ -321,6 +351,8 @@ int main(int argc, char* argv[])
     glfwSetCursorPosCallback(window, CursorPosCallback);
     glfwSetScrollCallback(window, ScrollCallback);
 
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc) glfwGetProcAddress);
     glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
@@ -378,11 +410,6 @@ int main(int argc, char* argv[])
         double delta_t = glfwGetTime() - curr_t;
         curr_t = glfwGetTime();
 
-        // Atualização das entidades...
-        for (auto entity : entities) {
-            entity.update(delta_t);
-        }
-        mario->update(delta_t); 
       
         glClearColor(131.0f / 255.0f, 147.0f / 255.0f, 254.0f / 255.0f, 1.0f); // Cor do background 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -398,10 +425,8 @@ int main(int argc, char* argv[])
         glm::vec4 camera_up_vector   = glm::vec4(0.0f,1.0f,0.0f,0.0f); // Vetor "up" fixado para apontar para o "céu" (eito Y global)
         glm::mat4 view;
         if (g_FPV) {
-            glm::vec4 w = -camera_view_vector/norm(camera_view_vector);
-            glm::vec4 u = crossproduct(camera_up_vector, w)/norm(crossproduct(camera_up_vector, w));
             camera_position_c  = glm::vec4(mario->pos.x,mario->pos.y+1.0f,mario->pos.z,1.0f); // Ponto "c", centro da câmera
-            camera_view_vector =  - glm::vec4(x,y,z, 0.0f);
+            camera_view_vector =  -glm::vec4(x,y,z, 0.0f);
         } else {
             camera_position_c  = glm::vec4(mario->pos.x+x,mario->pos.y+y,mario->pos.z+z,1.0f); // Ponto "c", centro da câmera
             glm::vec4 camera_lookat_l    = glm::vec4(mario->pos.x,mario->pos.y,mario->pos.z,1.0f); // Ponto "l", para onde a câmera (look-at) estará sempre olhando
@@ -426,6 +451,12 @@ int main(int argc, char* argv[])
         }
         glUniformMatrix4fv(g_view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(g_projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
+
+        // Atualização das entidades...
+        for (auto entity : entities) {
+            entity.update(delta_t);
+        }
+        mario->update(delta_t); 
 
         // Desenha entidades do mapa
         for (auto entity : entities) {
