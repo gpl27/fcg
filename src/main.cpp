@@ -20,6 +20,9 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
+#include <fstream>
+#include <sstream>
+#include <iostream>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -209,7 +212,7 @@ class Entity {
             scale = s;
             velocity = v;
             theta = 0;
-            dir = glm::vec4(0, 0, 1, 0);
+            dir = glm::vec4(0, 0, 0, 0);
         }
         void draw() {
             glm::mat4 model = Matrix_Scale(this->scale.x, this->scale.y, this->scale.z)
@@ -229,7 +232,7 @@ class Entity {
             glm::vec4 right = Matrix_Rotate_Y(3.1415/2)*dir;
             glm::vec4 direction = glm::vec4(0, 0, 0, 0);
             if (g_KeyW_Pressed) {
-                direction = direction + dir;
+                direction += dir;
             } 
             if (g_KeyS_Pressed){
                 direction -= dir;
@@ -259,10 +262,6 @@ class Entity {
 };
 
 
-#include <fstream>
-#include <sstream>
-#include <iostream>
-
 void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity*& mario) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -272,7 +271,6 @@ void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity
 
     std::string line;
     int row = 0;
-    // int profundidade_plataforma = 1; // numero de camadas de blocos do chão 
 
     while (std::getline(file, line)) {
         std::istringstream iss(line);
@@ -410,13 +408,18 @@ int main(int argc, char* argv[])
         double delta_t = glfwGetTime() - curr_t;
         curr_t = glfwGetTime();
 
+        // Atualização das entidades...
+        for (auto entity : entities) {
+            entity.update(delta_t);
+        }
+        mario->update(delta_t); 
+
       
         glClearColor(131.0f / 255.0f, 147.0f / 255.0f, 254.0f / 255.0f, 1.0f); // Cor do background 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(g_GpuProgramID);
 
         // Abaixo definimos as varáveis que efetivamente definem a câmera virtual.
-
         float r = g_CameraDistance;
         float y = r*sin(g_CameraPhi);
         float z = r*cos(g_CameraPhi)*cos(g_CameraTheta);
@@ -434,7 +437,6 @@ int main(int argc, char* argv[])
         }
         view = Matrix_Camera_View(camera_position_c, camera_view_vector, camera_up_vector);
 
-
         glm::mat4 projection;
         float nearplane = -0.1f;  // Posição do "near plane"
         float farplane  = -20.0f; // Posição do "far plane"
@@ -451,12 +453,6 @@ int main(int argc, char* argv[])
         }
         glUniformMatrix4fv(g_view_uniform       , 1 , GL_FALSE , glm::value_ptr(view));
         glUniformMatrix4fv(g_projection_uniform , 1 , GL_FALSE , glm::value_ptr(projection));
-
-        // Atualização das entidades...
-        for (auto entity : entities) {
-            entity.update(delta_t);
-        }
-        mario->update(delta_t); 
 
         // Desenha entidades do mapa
         for (auto entity : entities) {
