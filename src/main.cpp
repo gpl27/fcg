@@ -36,6 +36,7 @@
 
 #include "utils.h"
 #include "matrices.h"
+#include "collisions.h"
 
 // Estrutura que representa um modelo geométrico carregado a partir de um
 // arquivo ".obj". Veja https://en.wikipedia.org/wiki/Wavefront_.obj_file .
@@ -131,9 +132,6 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mode
 void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
-
-bool point_plane_collision(glm::vec3 p, glm::vec3 pmin, glm::vec3 pmax);
-bool cube_cube_collision(const glm::vec4& cmin1, const glm::vec4& cmax1, const glm::vec4& cmin2, const glm::vec4& cmax2);
 
 // Variáveis que definem um programa de GPU (shaders). Veja função LoadShadersFromFiles().
 GLuint g_GpuProgramID = 0;
@@ -269,22 +267,6 @@ glm::vec3 bezierCurve(float t, const glm::vec3& p0, const glm::vec3& p1, const g
     );
 }
 
-glm::vec2 random_point_in_rectangle(const glm::vec2& bbox_min, const glm::vec2& bbox_max) {
-    // Seed the random number generator (only once)
-    static bool seeded = false;
-    if (!seeded) {
-        std::srand(static_cast<unsigned int>(time(0)));
-        seeded = true;
-    }
-
-    // Generate random x and y coordinates within the rectangle
-    float random_x = bbox_min.x + static_cast<float>(std::rand()) / RAND_MAX * (bbox_max.x - bbox_min.x);
-    float random_y = bbox_min.y + static_cast<float>(std::rand()) / RAND_MAX * (bbox_max.y - bbox_min.y);
-
-    // Return the random point as a glm::vec2
-    return glm::vec2(random_x, random_y);
-}
-
 class Koopa : public Entity {
 public:
     float t = 0.0f; // Valor de t para a curva de Bézier
@@ -295,14 +277,10 @@ public:
 
     Koopa(glm::vec3 pos, glm::vec3 scale, glm::vec4 rotation)
         : Entity("Koopa", pos, scale, rotation), t(0.0f) {
-            // PrintVector(glm::vec4(groundMax.x, groundMax.y, groundMax.z, 0.0f));
-            // glm::vec2 r1 = random_point_in_rectangle(glm::vec2(groundMin.x, groundMin.z), glm::vec2(groundMax.x, groundMax.z));
-            // glm::vec2 r2 = random_point_in_rectangle(glm::vec2(groundMin.x, groundMin.z), glm::vec2(groundMax.x, groundMax.z));
-            // glm::vec2 r3 = random_point_in_rectangle(glm::vec2(groundMin.x, groundMin.z), glm::vec2(groundMax.x, groundMax.z));
             p0 = pos; // Ponto inicial
-            p1 = glm::vec3(pos.x-2, 0.0f, pos.z+1);  // Ponto de controle 1
-            p2 = glm::vec3(pos.x-3, 0.0f, pos.z+2);  // Ponto de controle 2
-            p3 = glm::vec3(pos.x-4, 0.0f, pos.z+3); // Ponto final
+            p1 = glm::vec3(pos.x-1, 0.0f, pos.z+1);  // Ponto de controle 1
+            p2 = glm::vec3(pos.x-2, 0.0f, pos.z-1);  // Ponto de controle 2
+            p3 = glm::vec3(pos.x-3, 0.0f, pos.z); // Ponto final
     }
 
     void update(double delta) override {
@@ -447,33 +425,9 @@ void LoadMap(const std::string& filename, std::vector<Entity*>& entities,  std::
         max_col = (col > max_col)? col : max_col;
         row++;
     }
-    groundMin = glm::vec3(0.0f, 1.0f, -row*1.0f);
-    groundMax = glm::vec3(max_col*1.0f, 1.0f, 0.0f);
+    groundMin = glm::vec3(-1.0f, 1.0f, -row*1.0f);
+    groundMax = glm::vec3(max_col*1.0f, 1.0f, 1.0f);
 }
-
-bool point_plane_collision(glm::vec3 p, glm::vec3 pmin, glm::vec3 pmax) {
-
-    if (p.y > pmin.y) {
-        return false; // No overlap in the y-axis, hence no collision
-    }
-
-    bool overlap_x = p.x < pmax.x && p.x > pmin.x;
-    bool overlap_z = p.z < pmax.z && p.z > pmin.z;
-
-    return overlap_x && overlap_z;
-
-}
-
-bool cube_cube_collision(const glm::vec4& cmin1, const glm::vec4& cmax1, const glm::vec4& cmin2, const glm::vec4& cmax2) {
-    bool overlapX = cmax1.x >= cmin2.x && cmin1.x <= cmax2.x;
-
-    bool overlapY = cmax1.y >= cmin2.y && cmin1.y <= cmax2.y;
-
-    bool overlapZ = cmax1.z >= cmin2.z && cmin1.z <= cmax2.z;
-
-    return overlapX && overlapY && overlapZ;
-}
-
 
 int main(int argc, char* argv[])
 {   
