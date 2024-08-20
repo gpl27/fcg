@@ -226,9 +226,6 @@ class Entity {
                 theta = g_CameraTheta + 3.1415;
                 dir = Matrix_Rotate_Y(theta)*glm::vec4(0,0,1,0);
             }
-            if (so_name == "Koopa") {
-                fprintf(stdout,"AQUI entao?\n");
-            }
             velocity.z = 0;
             velocity.x = 0;
             glm::vec4 right = Matrix_Rotate_Y(3.1415/2)*dir;
@@ -266,8 +263,7 @@ class Entity {
 glm::vec3 bezierCurve(float t, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3) {
     return glm::vec3(
         pow((1 - t), 3) * p0.x + 3 * t * pow((1 - t), 2) * p1.x + 
-        3 * pow(t, 2) * (1 - t) * p2.x + pow(t, 3) * p3.x,
-        p0.y, // Mantém o Koopa na mesma altura (nível do chão)
+        3 * pow(t, 2) * (1 - t) * p2.x + pow(t, 3) * p3.x, p0.y, 
         pow((1 - t), 3) * p0.z + 3 * t * pow((1 - t), 2) * p1.z + 
         3 * pow(t, 2) * (1 - t) * p2.z + pow(t, 3) * p3.z
     );
@@ -276,30 +272,32 @@ glm::vec3 bezierCurve(float t, const glm::vec3& p0, const glm::vec3& p1, const g
 class Koopa : public Entity {
 public:
     float t = 0.0f; // Valor de t para a curva de Bézier
-    float speed = 0.3f; // Velocidade de movimento ao longo da curva
+    float timer = 1.1f;
+    float speed = 0.2f; // Velocidade de movimento ao longo da curva
+    float direction = 1.0f;
     glm::vec3 p0, p1, p2, p3;
 
     Koopa(glm::vec3 pos, glm::vec3 scale, glm::vec3 rotation)
         : Entity("Koopa", pos, scale, rotation), t(0.0f) {
-        // Definir os pontos de controle da curva de Bézier com base na posição inicial
-        p0 = pos;
-        p1 = pos + glm::vec3(2.0f, 0.0f, 0.0f);  // Ponto de controle 1 (ajuste conforme necessário)
-        p2 = pos + glm::vec3(4.0f, 0.0f, -4.0f); // Ponto de controle 2 (ajuste conforme necessário)
-        p3 = pos + glm::vec3(6.0f, 0.0f, 0.0f);  // Ponto final (ajuste conforme necessário)
+            p0 = pos; // Ponto inicial
+            p1 = pos + glm::vec3(-3.0f, 0.0f, 10.0f);  // Ponto de controle 1
+            p2 = pos + glm::vec3(-2.0f, 0.0f, 2.0f);  // Ponto de controle 2
+            p3 = pos + glm::vec3(-1.0f, 0.0f, -2.0f); // Ponto final
     }
 
     void update(double delta) override {
-        t += speed * delta;
-        fprintf(stdout,"AQUI?\n");
-        // Reinicia o movimento ao longo da curva quando t atinge 1.0
-        if (t > 1.0f) {
+        t += direction *speed * delta;
+        if (t > timer) {
+            t = timer;
+            direction = -1.0f; // Inverte a direção
+        } else if (t < 0.0f) {
             t = 0.0f;
+            direction = 1.0f; // Inverte a direção
         }
 
         this->pos = bezierCurve(this->t, p0, p1, p2, p3);
     }
 };
-
 
 std::vector<glm::vec3> brickPositions;
 
@@ -326,33 +324,27 @@ void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity
                 if (caracter == "M") {
                     mario = new Entity("Mario", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.01f, 0.01f, 0.01f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "T") {
                     entities.emplace_back("Tube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "B") {
                     if (heightAdjustment > 0)
                         entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "G") {
                     entities.emplace_back("Goomba", glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.2f, 0.2f, 0.2f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "K") {
                 koopa = new Koopa(glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f));
                 entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "Y") {
                     entities.emplace_back("YellowCube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 col++;
             }
