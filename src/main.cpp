@@ -228,8 +228,7 @@ class Entity {
         }
         glm::mat4 get_model_mat() {
             return Matrix_Scale(this->scale.x, this->scale.y, this->scale.z)
-                    * Matrix_Translate(this->pos.x/this->scale.x, this->pos.y/this->scale.y, this->pos.z/this->scale.z)
-                    * Matrix_Rotate_Y(theta);
+                    * Matrix_Translate(this->pos.x/this->scale.x, this->pos.y/this->scale.y, this->pos.z/this->scale.z);
 
         }
         BBOX get_bbox() {
@@ -243,7 +242,9 @@ class Entity {
             return BBOX{bboxminw, bboxmaxw};
         }
         void draw() {
-            glm::mat4 model = get_model_mat();
+            glm::mat4 model = Matrix_Scale(this->scale.x, this->scale.y, this->scale.z)
+                            * Matrix_Translate(this->pos.x/this->scale.x, this->pos.y/this->scale.y, this->pos.z/this->scale.z)
+                            * Matrix_Rotate_Y(theta);;
             g_VirtualScene[so_name].draw(model);
         }
         virtual void update(double delta) {
@@ -321,7 +322,7 @@ public:
 
 class Mario : public Entity {
     glm::vec4 base_dir = glm::vec4(0, 0, 1, 0);
-    double v = 8;
+    double v = 6;
 public:
     Mario(glm::vec3 pos, glm::vec3 scale, glm::vec4 direction)
         : Entity("Mario", pos, scale, direction) {
@@ -416,7 +417,7 @@ void LoadMap(const std::string& filename, std::vector<Entity*>& entities,  std::
             // Se houver um segundo caracter, é o ajuste de altura
             if (iss >> heightAdjustment) {
                 if (caracter == "M") {
-                    mario = new Mario(glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.01f, 0.01f, 0.01f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+                    mario = new Mario(glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.009f, 0.009f, 0.009f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
                     floor.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                 }
                 else if (caracter == "T") {
