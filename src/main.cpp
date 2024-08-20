@@ -226,7 +226,9 @@ class Entity {
                 theta = g_CameraTheta + 3.1415;
                 dir = Matrix_Rotate_Y(theta)*glm::vec4(0,0,1,0);
             }
-
+            if (so_name == "Koopa") {
+                fprintf(stdout,"AQUI entao?\n");
+            }
             velocity.z = 0;
             velocity.x = 0;
             glm::vec4 right = Matrix_Rotate_Y(3.1415/2)*dir;
@@ -261,44 +263,40 @@ class Entity {
         }
 };
 
+glm::vec3 bezierCurve(float t, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3) {
+    return glm::vec3(
+        pow((1 - t), 3) * p0.x + 3 * t * pow((1 - t), 2) * p1.x + 
+        3 * pow(t, 2) * (1 - t) * p2.x + pow(t, 3) * p3.x,
+        p0.y, // Mantém o Koopa na mesma altura (nível do chão)
+        pow((1 - t), 3) * p0.z + 3 * t * pow((1 - t), 2) * p1.z + 
+        3 * pow(t, 2) * (1 - t) * p2.z + pow(t, 3) * p3.z
+    );
+}
+
 class Koopa : public Entity {
 public:
-    std::vector<glm::vec3> controlPoints;
     float t = 0.0f; // Valor de t para a curva de Bézier
-    float speed = 0.5f; // Velocidade de movimento ao longo da curva
+    float speed = 0.3f; // Velocidade de movimento ao longo da curva
+    glm::vec3 p0, p1, p2, p3;
 
-    Koopa(glm::vec3 p, glm::vec3 s, glm::vec3 v, std::vector<glm::vec3> points)
-        : Entity("Koopa", p, s, v), controlPoints(points), t(0.0f) {}
-
-    glm::vec3 bezierCurve(float t) {
-        glm::vec3 p0 = controlPoints[0];
-        glm::vec3 p1 = controlPoints[1];
-        glm::vec3 p2 = controlPoints[2];
-        glm::vec3 p3 = controlPoints[3];
-
-        float u = 1.0f - t;
-        float tt = t * t;
-        float uu = u * u;
-        float uuu = uu * u;
-        float ttt = tt * t;
-
-        glm::vec3 p = uuu * p0; // (1-t)^3 * p0
-        p += 3 * uu * t * p1;   // 3*(1-t)^2 * t * p1
-        p += 3 * u * tt * p2;   // 3*(1-t) * t^2 * p2
-        p += ttt * p3;          // t^3 * p3
-
-        return p;
+    Koopa(glm::vec3 pos, glm::vec3 scale, glm::vec3 rotation)
+        : Entity("Koopa", pos, scale, rotation), t(0.0f) {
+        // Definir os pontos de controle da curva de Bézier com base na posição inicial
+        p0 = pos;
+        p1 = pos + glm::vec3(2.0f, 0.0f, 0.0f);  // Ponto de controle 1 (ajuste conforme necessário)
+        p2 = pos + glm::vec3(4.0f, 0.0f, -4.0f); // Ponto de controle 2 (ajuste conforme necessário)
+        p3 = pos + glm::vec3(6.0f, 0.0f, 0.0f);  // Ponto final (ajuste conforme necessário)
     }
 
     void update(double delta) override {
         t += speed * delta;
-
+        fprintf(stdout,"AQUI?\n");
         // Reinicia o movimento ao longo da curva quando t atinge 1.0
         if (t > 1.0f) {
             t = 0.0f;
         }
 
-        this->pos = bezierCurve(t);
+        this->pos = bezierCurve(this->t, p0, p1, p2, p3);
     }
 };
 
@@ -347,18 +345,9 @@ void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity
                     brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "K") {
-
-                std::vector<glm::vec3> koopaPoints = {
-                    glm::vec3(1.0f, 0.0f, -1.0f), // Ponto de início
-                    glm::vec3(2.0f, 0.0f, -2.0f), // Ponto de controle 1
-                    glm::vec3(3.0f, 0.0f, -3.0f), // Ponto de controle 2
-                    glm::vec3(4.0f, 0.0f, -4.0f)  // Ponto final
-                };
-
-                Entity* koopa = new Koopa(glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f), koopaPoints);
+                koopa = new Koopa(glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f));
                 entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                 brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
-                // entities.emplace_back(*koopa);
                 }
                 else if (caracter == "Y") {
                     entities.emplace_back("YellowCube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
@@ -468,12 +457,14 @@ int main(int argc, char* argv[])
         curr_t = glfwGetTime();
 
         // Atualização das entidades...
-        for (auto entity : entities) {
+        for (auto& entity : entities) {
             entity.update(delta_t);
+            if (entity.so_name == "Koopa"){
+                std::cout << entity.so_name << std::endl;
+            }
         }
-        
-        koopa->update(delta_t);
         mario->update(delta_t); 
+        koopa->update(delta_t); 
 
       
         glClearColor(131.0f / 255.0f, 147.0f / 255.0f, 254.0f / 255.0f, 1.0f); // Cor do background 
