@@ -23,6 +23,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <ctime>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -131,6 +132,9 @@ void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods);
 void CursorPosCallback(GLFWwindow* window, double xpos, double ypos);
 void ScrollCallback(GLFWwindow* window, double xoffset, double yoffset);
 
+bool point_plane_collision(glm::vec3 p, glm::vec3 pmin, glm::vec3 pmax);
+bool cube_cube_collision(const glm::vec4& cmin1, const glm::vec4& cmax1, const glm::vec4& cmin2, const glm::vec4& cmax2);
+
 // Variáveis que definem um programa de GPU (shaders). Veja função LoadShadersFromFiles().
 GLuint g_GpuProgramID = 0;
 GLint g_model_uniform;
@@ -157,6 +161,7 @@ bool g_KeyW_Pressed = false;
 bool g_KeyS_Pressed = false;
 bool g_KeyA_Pressed = false;
 bool g_KeyD_Pressed = false;
+bool g_KeySpace_wPressed = false;
 
 // Variáveis que definem a câmera em coordenadas esféricas, controladas pelo
 // usuário através do mouse (veja função CursorPosCallback()). A posição
@@ -176,6 +181,9 @@ bool g_ShowInfoText = true;
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
+
+glm::vec3 groundMin;
+glm::vec3 groundMax;
 
 struct SceneObject
 {
@@ -198,6 +206,10 @@ struct SceneObject
 std::map<std::string, SceneObject> g_VirtualScene;
 
 
+struct BBOX {
+    glm::vec4 min;
+    glm::vec4 max;
+};
 class Entity {
     public:
         std::string so_name;
@@ -206,51 +218,35 @@ class Entity {
         glm::vec3 velocity;
         glm::vec4 dir;
         float theta;
-        Entity(std::string name, glm::vec3 p, glm::vec3 s, glm::vec3 v) {
+        Entity(std::string name, glm::vec3 p, glm::vec3 s, glm::vec4 direction) {
             so_name = name;
             pos = p;
             scale = s;
-            velocity = v;
+            velocity = glm::vec3(0, 0, 0);
             theta = 0;
-            dir = glm::vec4(0, 0, 0, 0);
+            dir = direction;
+        }
+        glm::mat4 get_model_mat() {
+            return Matrix_Scale(this->scale.x, this->scale.y, this->scale.z)
+                    * Matrix_Translate(this->pos.x/this->scale.x, this->pos.y/this->scale.y, this->pos.z/this->scale.z)
+                    * Matrix_Rotate_Y(theta);
+
+        }
+        BBOX get_bbox() {
+            glm::mat4 model = get_model_mat();
+            glm::vec3 bbmi = g_VirtualScene[so_name].bbox_min;
+            glm::vec4 bboxminw = glm::vec4(bbmi.x, bbmi.y, bbmi.z, 1.0f);
+            glm::vec3 bbma = g_VirtualScene[so_name].bbox_max;
+            glm::vec4 bboxmaxw = glm::vec4(bbma.x, bbma.y, bbma.z, 1.0f);
+            bboxmaxw = model * bboxmaxw;
+            bboxminw = model * bboxminw;
+            return BBOX{bboxminw, bboxmaxw};
         }
         void draw() {
-            glm::mat4 model = Matrix_Scale(this->scale.x, this->scale.y, this->scale.z)
-                            * Matrix_Translate(this->pos.x/this->scale.x, this->pos.y/this->scale.y, this->pos.z/this->scale.z)
-                            * Matrix_Rotate_Y(theta);
+            glm::mat4 model = get_model_mat();
             g_VirtualScene[so_name].draw(model);
         }
         virtual void update(double delta) {
-            // Update theta
-            if (so_name == "Mario") {
-                theta = g_CameraTheta + 3.1415;
-                dir = Matrix_Rotate_Y(theta)*glm::vec4(0,0,1,0);
-            }
-            velocity.z = 0;
-            velocity.x = 0;
-            glm::vec4 right = Matrix_Rotate_Y(3.1415/2)*dir;
-            glm::vec4 direction = glm::vec4(0, 0, 0, 0);
-            if (g_KeyW_Pressed) {
-                direction += dir;
-            } 
-            if (g_KeyS_Pressed){
-                direction -= dir;
-            } 
-            if (g_KeyA_Pressed) {
-                direction += right;
-            }
-            if (g_KeyD_Pressed) {
-                direction -= right;
-            }
-            double sum = fabs(direction.x) + fabs(direction.z);
-            if (sum != 0) {
-                double zpart = (direction.z)/sum;
-                double xpart = (direction.x)/sum;
-                velocity.x = xpart*3;
-                velocity.z = zpart*3;
-            }
-
-
             // Check for collisions
 
             // Update position
@@ -259,6 +255,9 @@ class Entity {
             pos.z += (velocity.z*delta);
         }
 };
+
+std::vector<Entity*> floor_bricks;
+std::vector<Entity*> entities;
 
 glm::vec3 bezierCurve(float t, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3) {
     return glm::vec3(
@@ -269,6 +268,22 @@ glm::vec3 bezierCurve(float t, const glm::vec3& p0, const glm::vec3& p1, const g
     );
 }
 
+glm::vec2 random_point_in_rectangle(const glm::vec2& bbox_min, const glm::vec2& bbox_max) {
+    // Seed the random number generator (only once)
+    static bool seeded = false;
+    if (!seeded) {
+        std::srand(static_cast<unsigned int>(time(0)));
+        seeded = true;
+    }
+
+    // Generate random x and y coordinates within the rectangle
+    float random_x = bbox_min.x + static_cast<float>(std::rand()) / RAND_MAX * (bbox_max.x - bbox_min.x);
+    float random_y = bbox_min.y + static_cast<float>(std::rand()) / RAND_MAX * (bbox_max.y - bbox_min.y);
+
+    // Return the random point as a glm::vec2
+    return glm::vec2(random_x, random_y);
+}
+
 class Koopa : public Entity {
 public:
     float t = 0.0f; // Valor de t para a curva de Bézier
@@ -277,12 +292,16 @@ public:
     float direction = 1.0f;
     glm::vec3 p0, p1, p2, p3;
 
-    Koopa(glm::vec3 pos, glm::vec3 scale, glm::vec3 rotation)
+    Koopa(glm::vec3 pos, glm::vec3 scale, glm::vec4 rotation)
         : Entity("Koopa", pos, scale, rotation), t(0.0f) {
+            // PrintVector(glm::vec4(groundMax.x, groundMax.y, groundMax.z, 0.0f));
+            // glm::vec2 r1 = random_point_in_rectangle(glm::vec2(groundMin.x, groundMin.z), glm::vec2(groundMax.x, groundMax.z));
+            // glm::vec2 r2 = random_point_in_rectangle(glm::vec2(groundMin.x, groundMin.z), glm::vec2(groundMax.x, groundMax.z));
+            // glm::vec2 r3 = random_point_in_rectangle(glm::vec2(groundMin.x, groundMin.z), glm::vec2(groundMax.x, groundMax.z));
             p0 = pos; // Ponto inicial
-            p1 = pos + glm::vec3(-3.0f, 0.0f, 10.0f);  // Ponto de controle 1
-            p2 = pos + glm::vec3(-2.0f, 0.0f, 2.0f);  // Ponto de controle 2
-            p3 = pos + glm::vec3(-1.0f, 0.0f, -2.0f); // Ponto final
+            p1 = glm::vec3(pos.x-2, 0.0f, pos.z+1);  // Ponto de controle 1
+            p2 = glm::vec3(pos.x-3, 0.0f, pos.z+2);  // Ponto de controle 2
+            p3 = glm::vec3(pos.x-4, 0.0f, pos.z+3); // Ponto final
     }
 
     void update(double delta) override {
@@ -299,9 +318,83 @@ public:
     }
 };
 
-std::vector<glm::vec3> brickPositions;
 
-void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity*& mario, Koopa*& koopa) {
+class Mario : public Entity {
+    glm::vec4 base_dir = glm::vec4(0, 0, 1, 0);
+    double v = 8;
+public:
+    Mario(glm::vec3 pos, glm::vec3 scale, glm::vec4 direction)
+        : Entity("Mario", pos, scale, direction) {
+
+    }
+
+    void update(double delta) override {
+        // Update theta
+        theta = g_CameraTheta + 3.1415;
+        dir = Matrix_Rotate_Y(theta)*base_dir;
+        velocity.z = 0;
+        velocity.x = 0;
+        glm::vec4 right = Matrix_Rotate_Y(3.1415/2)*dir;
+        glm::vec4 direction = glm::vec4(0, 0, 0, 0);
+        if (g_KeyW_Pressed) {
+            direction += dir;
+        } 
+        if (g_KeyS_Pressed){
+            direction -= dir;
+        } 
+        if (g_KeyA_Pressed) {
+            direction += right;
+        }
+        if (g_KeyD_Pressed) {
+            direction -= right;
+        }
+        double sum = fabs(direction.x) + fabs(direction.z);
+        if (sum != 0) {
+            double zpart = (direction.z)/sum;
+            double xpart = (direction.x)/sum;
+            velocity.x = xpart*v;
+            velocity.z = zpart*v;
+        }
+        // Gravity
+        velocity.y += -10*delta;
+        double dy = velocity.y*delta;
+        double dx = velocity.x*delta;
+        double dz = velocity.z*delta;
+        glm::vec3 fp = pos;
+        fp.y += dy;
+
+        // Check for collisions
+        if (point_plane_collision(fp, groundMin, groundMax)) {
+            velocity.y = 0.0f;
+        }
+        BBOX mbox = get_bbox();
+        mbox.min.y += dy;
+        mbox.max.y += dy;
+        mbox.min.x += dx;
+        mbox.max.x += dx;
+        mbox.min.z += dz;
+        mbox.max.z += dz;
+
+        for (auto entity : entities) {
+            BBOX ebox = entity->get_bbox();
+            if (cube_cube_collision(mbox.min, mbox.max, ebox.min, ebox.max)) {
+                velocity.x = 0; // This is problematic, as it is impossible to move out
+                velocity.y = 0;
+                velocity.z = 0;
+            }
+        }
+
+        // Update position
+        pos.x += (velocity.x*delta);
+        pos.y += (velocity.y*delta);
+        pos.z += (velocity.z*delta);
+
+    }
+};
+
+Mario* mario;
+
+void LoadMap(const std::string& filename, std::vector<Entity*>& entities,  std::vector<Entity*>& floor, Mario*& mario) {
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Erro ao abrir o arquivo: " << filename << std::endl;
@@ -310,6 +403,7 @@ void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity
 
     std::string line;
     int row = 0;
+    int max_col = 0;
 
     while (std::getline(file, line)) {
         std::istringstream iss(line);
@@ -322,35 +416,61 @@ void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity
             // Se houver um segundo caracter, é o ajuste de altura
             if (iss >> heightAdjustment) {
                 if (caracter == "M") {
-                    mario = new Entity("Mario", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.01f, 0.01f, 0.01f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    mario = new Mario(glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.01f, 0.01f, 0.01f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+                    floor.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                 }
                 else if (caracter == "T") {
-                    entities.emplace_back("Tube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back(new Entity("Tube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+                    floor.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                 }
                 else if (caracter == "B") {
                     if (heightAdjustment > 0)
-                        entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                        entities.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+                    floor.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                 }
                 else if (caracter == "G") {
-                    entities.emplace_back("Goomba", glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.2f, 0.2f, 0.2f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back(new Entity("Goomba", glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.2f, 0.2f, 0.2f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+                    floor.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                 }
                 else if (caracter == "K") {
-                koopa = new Koopa(glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f));
-                entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                entities.emplace_back(new Koopa(glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.4f, 0.4f, 0.4f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+                floor.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                 }
                 else if (caracter == "Y") {
-                    entities.emplace_back("YellowCube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    entities.emplace_back(new Entity("YellowCube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+                    floor.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                 }
                 col++;
             }
         }
+        max_col = (col > max_col)? col : max_col;
         row++;
     }
+    groundMin = glm::vec3(0.0f, 1.0f, -row*1.0f);
+    groundMax = glm::vec3(max_col*1.0f, 1.0f, 0.0f);
+}
+
+bool point_plane_collision(glm::vec3 p, glm::vec3 pmin, glm::vec3 pmax) {
+
+    if (p.y > pmin.y) {
+        return false; // No overlap in the y-axis, hence no collision
+    }
+
+    bool overlap_x = p.x < pmax.x && p.x > pmin.x;
+    bool overlap_z = p.z < pmax.z && p.z > pmin.z;
+
+    return overlap_x && overlap_z;
+
+}
+
+bool cube_cube_collision(const glm::vec4& cmin1, const glm::vec4& cmax1, const glm::vec4& cmin2, const glm::vec4& cmax2) {
+    bool overlapX = cmax1.x >= cmin2.x && cmin1.x <= cmax2.x;
+
+    bool overlapY = cmax1.y >= cmin2.y && cmin1.y <= cmax2.y;
+
+    bool overlapZ = cmax1.z >= cmin2.z && cmin1.z <= cmax2.z;
+
+    return overlapX && overlapY && overlapZ;
 }
 
 
@@ -437,10 +557,7 @@ int main(int argc, char* argv[])
 
     double curr_t = glfwGetTime();
 
-    Entity* mario;
-    Koopa* koopa;
-    std::vector<Entity> entities;
-    LoadMap("../../src/map.txt", entities, mario, koopa); // Função que abre arquivo .txt para carregar o mapa do jogo
+    LoadMap("../../src/map.txt", entities, floor_bricks, mario); // Função que abre arquivo .txt para carregar o mapa do jogo
 
     while (!glfwWindowShouldClose(window))
     {   
@@ -450,13 +567,9 @@ int main(int argc, char* argv[])
 
         // Atualização das entidades...
         for (auto& entity : entities) {
-            entity.update(delta_t);
-            if (entity.so_name == "Koopa"){
-                std::cout << entity.so_name << std::endl;
-            }
+            entity->update(delta_t);
         }
         mario->update(delta_t); 
-        koopa->update(delta_t); 
 
       
         glClearColor(131.0f / 255.0f, 147.0f / 255.0f, 254.0f / 255.0f, 1.0f); // Cor do background 
@@ -500,10 +613,11 @@ int main(int argc, char* argv[])
 
         // Desenha entidades do mapa
         for (auto entity : entities) {
-            entity.draw();
+            entity->draw();
         }
+        for (auto brick: floor_bricks)
+            brick->draw();
         mario->draw();
-        koopa->draw();
 
         TextRendering_ShowProjection(window);
         TextRendering_ShowFramesPerSecond(window);
@@ -1144,31 +1258,28 @@ void CursorPosCallback(GLFWwindow* window, double xpos, double ypos)
     // parâmetros que definem a posição da câmera dentro da cena virtual.
     // Assim, temos que o usuário consegue controlar a câmera.
 
-    if (true)
-    {
-        // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
-        float dx = xpos - g_LastCursorPosX;
-        float dy = ypos - g_LastCursorPosY;
-    
-        // Atualizamos parâmetros da câmera com os deslocamentos
-        g_CameraTheta -= 0.01f*dx;
-        g_CameraPhi   += 0.01f*dy;
-    
-        // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
-        float phimax = 3.141592f/2;
-        float phimin = -phimax;
-    
-        if (g_CameraPhi > phimax)
-            g_CameraPhi = phimax;
-    
-        if (g_CameraPhi < phimin)
-            g_CameraPhi = phimin;
-    
-        // Atualizamos as variáveis globais para armazenar a posição atual do
-        // cursor como sendo a última posição conhecida do cursor.
-        g_LastCursorPosX = xpos;
-        g_LastCursorPosY = ypos;
-    }
+    // Deslocamento do cursor do mouse em x e y de coordenadas de tela!
+    float dx = xpos - g_LastCursorPosX;
+    float dy = ypos - g_LastCursorPosY;
+
+    // Atualizamos parâmetros da câmera com os deslocamentos
+    g_CameraTheta -= 0.01f*dx;
+    g_CameraPhi   += 0.01f*dy;
+
+    // Em coordenadas esféricas, o ângulo phi deve ficar entre -pi/2 e +pi/2.
+    float phimax = 3.141592f/2;
+    float phimin = -phimax;
+
+    if (g_CameraPhi > phimax)
+        g_CameraPhi = phimax;
+
+    if (g_CameraPhi < phimin)
+        g_CameraPhi = phimin;
+
+    // Atualizamos as variáveis globais para armazenar a posição atual do
+    // cursor como sendo a última posição conhecida do cursor.
+    g_LastCursorPosX = xpos;
+    g_LastCursorPosY = ypos;
 
     if (g_RightMouseButtonPressed)
     {
@@ -1256,6 +1367,11 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mod)
     } else if (key == GLFW_KEY_A && action == GLFW_RELEASE) {
         g_KeyA_Pressed = false;
     } 
+
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        if (mario->velocity.y == 0)
+            mario->velocity.y += 7;
+    }
 
 
     // Se o usuário apertar a tecla P, utilizamos projeção perspectiva.
