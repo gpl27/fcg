@@ -220,7 +220,7 @@ class Entity {
                             * Matrix_Rotate_Y(theta);
             g_VirtualScene[so_name].draw(model);
         }
-        void update(double delta) {
+        virtual void update(double delta) {
             // Update theta
             if (so_name == "Mario") {
                 theta = g_CameraTheta + 3.1415;
@@ -261,8 +261,51 @@ class Entity {
         }
 };
 
+class Koopa : public Entity {
+public:
+    std::vector<glm::vec3> controlPoints;
+    float t = 0.0f; // Valor de t para a curva de Bézier
+    float speed = 0.5f; // Velocidade de movimento ao longo da curva
 
-void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity*& mario) {
+    Koopa(glm::vec3 p, glm::vec3 s, glm::vec3 v, std::vector<glm::vec3> points)
+        : Entity("Koopa", p, s, v), controlPoints(points), t(0.0f) {}
+
+    glm::vec3 bezierCurve(float t) {
+        glm::vec3 p0 = controlPoints[0];
+        glm::vec3 p1 = controlPoints[1];
+        glm::vec3 p2 = controlPoints[2];
+        glm::vec3 p3 = controlPoints[3];
+
+        float u = 1.0f - t;
+        float tt = t * t;
+        float uu = u * u;
+        float uuu = uu * u;
+        float ttt = tt * t;
+
+        glm::vec3 p = uuu * p0; // (1-t)^3 * p0
+        p += 3 * uu * t * p1;   // 3*(1-t)^2 * t * p1
+        p += 3 * u * tt * p2;   // 3*(1-t) * t^2 * p2
+        p += ttt * p3;          // t^3 * p3
+
+        return p;
+    }
+
+    void update(double delta) override {
+        t += speed * delta;
+
+        // Reinicia o movimento ao longo da curva quando t atinge 1.0
+        if (t > 1.0f) {
+            t = 0.0f;
+        }
+
+        this->pos = bezierCurve(t);
+    }
+};
+
+
+std::vector<glm::vec3> brickPositions;
+
+void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity*& mario, Koopa*& koopa) {
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Erro ao abrir o arquivo: " << filename << std::endl;
@@ -285,27 +328,42 @@ void LoadMap(const std::string& filename, std::vector<Entity>& entities,  Entity
                 if (caracter == "M") {
                     mario = new Entity("Mario", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.01f, 0.01f, 0.01f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "T") {
                     entities.emplace_back("Tube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "B") {
                     if (heightAdjustment > 0)
                         entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "G") {
                     entities.emplace_back("Goomba", glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.2f, 0.2f, 0.2f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 else if (caracter == "K") {
-                    entities.emplace_back("Koopa", glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f));
-                    entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+
+                std::vector<glm::vec3> koopaPoints = {
+                    glm::vec3(1.0f, 0.0f, -1.0f), // Ponto de início
+                    glm::vec3(2.0f, 0.0f, -2.0f), // Ponto de controle 1
+                    glm::vec3(3.0f, 0.0f, -3.0f), // Ponto de controle 2
+                    glm::vec3(4.0f, 0.0f, -4.0f)  // Ponto final
+                };
+
+                Entity* koopa = new Koopa(glm::vec3(col * 1.0f, heightAdjustment+0.5f, -row * 1.0f), glm::vec3(0.4f, 0.4f, 0.4f), glm::vec3(0.0f, 0.0f, 0.0f), koopaPoints);
+                entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
+                // entities.emplace_back(*koopa);
                 }
                 else if (caracter == "Y") {
                     entities.emplace_back("YellowCube", glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
                     entities.emplace_back("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec3(0.0f, 0.0f, 0.0f));
+                    brickPositions.push_back(glm::vec3(col * 1.0f, 0, -row * 1.0f)); // Salvar posição do Brick
                 }
                 col++;
             }
@@ -399,8 +457,9 @@ int main(int argc, char* argv[])
     double curr_t = glfwGetTime();
 
     Entity* mario;
+    Koopa* koopa;
     std::vector<Entity> entities;
-    LoadMap("../../src/map.txt", entities, mario); // Função que abre arquivo .txt para carregar o mapa do jogo
+    LoadMap("../../src/map.txt", entities, mario, koopa); // Função que abre arquivo .txt para carregar o mapa do jogo
 
     while (!glfwWindowShouldClose(window))
     {   
@@ -412,6 +471,8 @@ int main(int argc, char* argv[])
         for (auto entity : entities) {
             entity.update(delta_t);
         }
+        
+        koopa->update(delta_t);
         mario->update(delta_t); 
 
       
@@ -459,6 +520,7 @@ int main(int argc, char* argv[])
             entity.draw();
         }
         mario->draw();
+        koopa->draw();
 
         TextRendering_ShowProjection(window);
         TextRendering_ShowFramesPerSecond(window);
