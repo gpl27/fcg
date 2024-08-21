@@ -180,7 +180,10 @@ bool g_FPV = false;
 bool g_ShowInfoText = true;
 
 // Variável que controla a troca de mapa.
-bool changeMap = false;
+bool mapChanged = false;
+bool changeToMap2 = false;
+bool changeToMap3 = false;
+
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
@@ -371,9 +374,21 @@ public:
             
             if(entity->so_name == "Tube"){
                 if (cube_cube_collision(mbox.min, mbox.max, ebox.min, ebox.max)){
-                    changeMap = true;
+                    if (mapChanged){
+                        changeToMap3 = true;
+                    }
+                    else {
+                        changeToMap2 = true;
+                    }
                 }
             }
+
+            if(entity->so_name == "Koopa" | entity->so_name == "Goomba"){
+                if (cube_cube_collision(mbox.min, mbox.max, ebox.min, ebox.max)){
+                    pos = mario_spawn;
+                }
+            }
+
         }
 
         // Update position
@@ -543,11 +558,18 @@ int main(int argc, char* argv[])
         }
         mario->update(delta_t); 
 
-        if (changeMap) {
+        if (changeToMap2) {
             entities.clear();
             floor_bricks.clear();
             LoadMap("../../src/map2.txt", entities, floor_bricks, mario); // Função que abre arquivo .txt para carregar o mapa do jogo
-            changeMap = false;
+            changeToMap2 = false;
+            mapChanged = true;
+        }
+        if (changeToMap3) {
+            entities.clear();
+            floor_bricks.clear();
+            LoadMap("../../src/map3.txt", entities, floor_bricks, mario); // Função que abre arquivo .txt para carregar o mapa do jogo
+            changeToMap3 = false;
         }
 
       
