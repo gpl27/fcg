@@ -172,10 +172,15 @@ glm::vec4 camera_view_vector;
 
 // Variável que controla o tipo de projeção utilizada: perspectiva ou ortográfica.
 bool g_UsePerspectiveProjection = true;
+
+// Variável que controla o tipo de câmera utilizada: look-at ou freem-cam.
 bool g_FPV = false;
 
 // Variável que controla se o texto informativo será mostrado na tela.
 bool g_ShowInfoText = true;
+
+// Variável que controla a troca de mapa.
+bool changeMap = false;
 
 // Número de texturas carregadas pela função LoadTextureImage()
 GLuint g_NumLoadedTextures = 0;
@@ -300,10 +305,12 @@ public:
 
 class Mario : public Entity {
     glm::vec4 base_dir = glm::vec4(0, 0, 1, 0);
+    glm::vec3 mario_spawn;
     double v = 6;
 public:
     Mario(glm::vec3 pos, glm::vec3 scale, glm::vec4 direction)
         : Entity("Mario", pos, scale, direction) {
+            mario_spawn = pos;
 
     }
 
@@ -361,6 +368,12 @@ public:
                 velocity.y = 0;
                 velocity.z = 0;
             }
+            
+            if(entity->so_name == "Tube"){
+                if (cube_cube_collision(mbox.min, mbox.max, ebox.min, ebox.max)){
+                    changeMap = true;
+                }
+            }
         }
 
         // Update position
@@ -368,6 +381,9 @@ public:
         pos.y += (velocity.y*delta);
         pos.z += (velocity.z*delta);
 
+        if (pos.y < -10.0f){
+            pos = mario_spawn;
+        }
     }
 };
 
@@ -396,6 +412,7 @@ void LoadMap(const std::string& filename, std::vector<Entity*>& entities,  std::
             if (iss >> heightAdjustment) {
                 if (caracter == "M") {
                     mario = new Mario(glm::vec3(col * 1.0f, heightAdjustment, -row * 1.0f), glm::vec3(0.009f, 0.009f, 0.009f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+                    glm::vec3 mario_spawn = mario->pos;
                     floor.emplace_back(new Entity("BrickBlock", glm::vec3(col * 1.0f, 0, -row * 1.0f), glm::vec3(0.3f, 0.3f, 0.3f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                 }
                 else if (caracter == "T") {
@@ -450,7 +467,7 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     GLFWwindow* window;
-    window = glfwCreateWindow(800, 600, "Super Mario Bebado", NULL, NULL);
+    window = glfwCreateWindow(800, 600, "Super Mauro", NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -525,6 +542,13 @@ int main(int argc, char* argv[])
             entity->update(delta_t);
         }
         mario->update(delta_t); 
+
+        if (changeMap) {
+            entities.clear();
+            floor_bricks.clear();
+            LoadMap("../../src/map2.txt", entities, floor_bricks, mario); // Função que abre arquivo .txt para carregar o mapa do jogo
+            changeMap = false;
+        }
 
       
         glClearColor(131.0f / 255.0f, 147.0f / 255.0f, 254.0f / 255.0f, 1.0f); // Cor do background 
